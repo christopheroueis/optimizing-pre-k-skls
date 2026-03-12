@@ -344,6 +344,27 @@ body:hover .nav-arrow { opacity: 0.6; }
   border-radius: 0 0 12px 12px; border: 1px solid rgba(255,255,255,0.06);
   border-top: none;
 }
+.fullscreen-btn {
+  position: absolute; top: 8px; right: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  color: var(--coral); padding: 4px 10px; border-radius: 4px;
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; cursor: pointer; z-index: 10;
+  backdrop-filter: blur(8px); transition: all 200ms ease;
+}
+.fullscreen-btn:hover { background: rgba(249,115,22,0.15); border-color: var(--coral); }
+.laptop-mockup.is-fullscreen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  max-width: none; margin: 0; z-index: 10000;
+}
+.laptop-mockup.is-fullscreen .laptop-bezel { border-radius: 0; height: 100vh; padding: 0; border: none; }
+.laptop-mockup.is-fullscreen .laptop-screen { aspect-ratio: auto; height: 100vh; border-radius: 0; }
+.laptop-mockup.is-fullscreen .laptop-keyboard { display: none; }
+.laptop-mockup.is-fullscreen .fullscreen-btn { 
+  top: 15px; right: 15px; background: var(--coral); color: var(--navy); 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+body.has-fullscreen .progress-bar, body.has-fullscreen .nav-arrow { display: none !important; }
 .para-strip {
   display: flex; justify-content: center; gap: 32px; margin-top: 36px; flex-wrap: wrap;
 }
@@ -652,8 +673,9 @@ body:hover .nav-arrow { opacity: 0.6; }
   <div class="scene-content" style="align-items:center;">
     <h2 class="stagger builder-header" data-delay="0">Meet ClassroomIQ — the principal's optimization engine.</h2>
     <p class="stagger builder-sub" data-delay="150">Drag. Drop. Optimize. Every constraint, every child, every certification — balanced automatically.</p>
-    <div class="stagger laptop-mockup" data-delay="300">
+    <div class="stagger laptop-mockup" data-delay="300" id="laptopMockup">
       <div class="laptop-bezel">
+        <button class="fullscreen-btn" id="toggleFullscreen">Expand ⤢</button>
         <iframe id="builderIframe" class="laptop-screen" loading="lazy" title="ClassroomIQ Builder"></iframe>
       </div>
       <div class="laptop-keyboard"></div>
@@ -1106,6 +1128,15 @@ body:hover .nav-arrow { opacity: 0.6; }
     msg.style.display = 'block';
     msg.style.animation = 'fadeUp 600ms cubic-bezier(0.16,1,0.32,1) forwards';
   };
+
+  /* ── Fullscreen Toggle ── */
+  onBtn('toggleFullscreen', () => {
+    const mockup = document.getElementById('laptopMockup');
+    const btn = document.getElementById('toggleFullscreen');
+    const isFS = mockup.classList.toggle('is-fullscreen');
+    document.body.classList.toggle('has-fullscreen', isFS);
+    btn.textContent = isFS ? 'Exit Full Screen ✕' : 'Expand ⤢';
+  });
 
   window.resetOptions = function() {
     document.getElementById('optionA').classList.remove('selected', 'dimmed');
