@@ -192,15 +192,7 @@ body:hover .nav-arrow { opacity: 0.6; }
 /* ── SCENE 0: WELCOME ── */
 .scene-welcome { 
   align-items: stretch; 
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-}
-.welcome-video {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 0;
-}
-.welcome-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(15,23,42,0.55); z-index: 0;
+  background: radial-gradient(circle at 50% 10%, rgba(217,119,6,0.15) 0%, rgba(15,23,42,0.95) 60%, #0f172a 100%);
 }
 .welcome-content {
   position: relative; z-index: 1; display: flex; flex-direction: column;
@@ -561,10 +553,6 @@ body:hover .nav-arrow { opacity: 0.6; }
 
 <!-- ═══ SCENE 0: WELCOME ═══ -->
 <div class="scene scene-welcome active" id="scene-0">
-  <video class="welcome-video" autoplay muted loop playsinline>
-    <source src="./background.mp4" type="video/mp4">
-  </video>
-  <div class="welcome-overlay"></div>
   <div class="welcome-content">
     <div class="welcome-eyebrow">Carnegie Mellon University · Heinz College · Spring 2026</div>
     <h1 class="welcome-title">Optimizing Pre-Schools</h1>
