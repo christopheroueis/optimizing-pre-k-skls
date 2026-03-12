@@ -2,1931 +2,1135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1920">
-<title>The Classroom Builder — Goal Programming Simulator</title>
-<meta name="description" content="Interactive drag-and-drop preschool classroom assignment simulator visualizing Goal Programming / multi-objective optimization.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimizing Pre-Schools — Principal's Edition</title>
+<meta name="description" content="An interactive animated story showing how AI-powered optimization transforms preschool classroom management.">
+<script src="https://cdn.jsdelivr.net/npm/glpk.js/dist/glpk.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --panel-raised: #253044;
-  --border: rgba(255,255,255,0.08);
-  --border-active: rgba(249,115,22,0.5);
-  --primary: #f97316;
-  --primary-light: #fb923c;
-  --primary-dark: #ea6c0a;
-  --green: #22c55e;
-  --green-bg: rgba(34,197,94,0.12);
-  --yellow: #eab308;
-  --yellow-bg: rgba(234,179,8,0.12);
-  --red: #ef4444;
-  --red-bg: rgba(239,68,68,0.12);
-  --blue: #3b82f6;
-  --blue-bg: rgba(59,130,246,0.12);
-  --purple: #a855f7;
-  --purple-bg: rgba(168,85,247,0.12);
-  --teal: #14b8a6;
-  --teal-bg: rgba(20,184,166,0.12);
-  --slate: #94a3b8;
-  --slate-light: #64748b;
-  --cream: #f1f5f9;
-  --cream-70: rgba(241,245,249,0.7);
-  --cream-30: rgba(241,245,249,0.3);
-  --glass: rgba(255,255,255,0.04);
-  --glass-border: rgba(255,255,255,0.10);
-  --shadow: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
-  --radius: 10px;
-  --radius-sm: 7px;
-  --radius-xs: 5px;
-}
-html{font-size:13px}
-html, body { background: var(--bg) !important; }
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg) !important;color:var(--cream);overflow-x:hidden}
-h1,h2,h3,h4{font-weight:600}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* ── LAYOUT ── */
-.app-header{
-  background:linear-gradient(135deg, #1e293b 0%, #253044 100%);
-  border-bottom:1px solid var(--border);
-  color:#fff;padding:10px 24px;display:flex;align-items:center;gap:16px;
-  position:relative;z-index:10;
-}
-.app-header h1{font-family:'Inter',sans-serif;font-size:1.15rem;font-weight:600;letter-spacing:0.12em;color:var(--cream);text-transform:uppercase}
-.app-header .subtitle{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:400;color:var(--slate);letter-spacing:0.08em}
-.header-bar{width:8px;height:24px;background:var(--primary)}
-.header-text-group{display:flex;align-items:baseline;gap:12px}
-.app-container{display:flex;height:calc(100vh - 52px);gap:0}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Stat pills / Header pills */
-.stat-pill{
-  background:transparent;border:1px solid var(--glass-border);
-  border-radius:3px;padding:4px 12px;font-size:.65rem;font-weight:500;
-  letter-spacing:0.06em;color:var(--slate);
-}
-.stats-row{display:flex;gap:6px;padding:8px 0;}
-
-/* LEFT PANEL */
-.left-panel{
-  width:220px;min-width:220px;background:var(--panel);border-right:1px solid var(--border);
-  overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px;
-}
-.panel-title{
-  font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.14em;
-  color:var(--slate-light);padding-bottom:6px;border-bottom:1px solid var(--border);
-  margin-bottom:8px;display:flex;align-items:center;
-}
-.resource-section{display:flex;flex-direction:column;gap:6px}
-
-/* CARDS */
-.card{
-  background:var(--panel-raised);border:1px solid var(--border);border-radius:var(--radius-sm);
-  padding:10px 12px;cursor:grab;transition:all 250ms cubic-bezier(0.16,1,0.32,1);position:relative;
-  box-shadow:none;
-}
-.card:hover{border-color:var(--border-active);transform:translateY(-1px);box-shadow:var(--shadow-md);background:#2a3a50;}
-.card.dragging{opacity:.4;transform:scale(.95)}
-.card-name{font-weight:700;font-size:.82rem;margin-bottom:4px;display:flex;align-items:center;gap:5px}
-.card-badges{display:flex;flex-wrap:wrap;gap:3px}
-
-/* Teacher card colors */
-.card-teacher{border-left:3px solid var(--primary)}
-.card-para{border-left:3px solid var(--teal)}
-.card-student{border-left:3px solid #a855f7}
-.card-student.assigned{opacity:.35;pointer-events:none;cursor:default}
-.card-teacher.assigned{opacity:.35;pointer-events:none;cursor:default}
-.card-para.assigned{opacity:.35;pointer-events:none;cursor:default}
-
-/* BADGES */
-.badge{
-  font-size:.55rem;font-weight:700;padding:1px 5px;border-radius:2px;
-  letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
-  border:1px solid currentColor;opacity:.85;background:transparent;
-}
-.badge-sped{color:#fca5a5;border-color:rgba(239,68,68,0.4)}
-.badge-esl{color:#93c5fd;border-color:rgba(59,130,246,0.4)}
-.badge-bilingual{color:#d8b4fe;border-color:rgba(168,85,247,0.4)}
-.badge-ec{color:#86efac;border-color:rgba(34,197,94,0.4)}
-.badge-iep{color:#fca5a5;border-color:rgba(239,68,68,0.4)}
-.badge-boy{color:#93c5fd;border-color:rgba(59,130,246,0.4)}
-.badge-girl{color:#f9a8d4;border-color:rgba(236,72,153,0.4)}
-
-.at-risk-bar{
-  height:4px;border-radius:4px;margin-top:4px;background:var(--glass-border);overflow:hidden;
-}
-.at-risk-fill{height:100%;border-radius:4px;transition:width .3s}
-/* Override inline styles for at-risk colors */
-.at-risk-fill[style*="#ef4444"] { background: var(--primary) !important; }
-.at-risk-fill[style*="#eab308"] { background: var(--yellow) !important; }
-.at-risk-fill[style*="#22c55e"] { background: var(--green) !important; }
-
-.at-risk-label{font-size:.6rem;color:var(--slate);font-weight:600;margin-top:2px}
-
-/* CENTER PANEL */
-.center-panel{
-  flex:1;overflow-y:auto;padding:12px;
-  background:var(--bg);
-}
-.classroom-grid{
-  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
-}
-.classroom-slot{
-  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-  padding:10px;min-height:160px;transition:all 250ms cubic-bezier(0.16,1,0.32,1);
-  box-shadow:none;display:flex;flex-direction:column;position:relative;
-}
-.classroom-slot.drag-over{
-  border-color:var(--primary);background:rgba(249,115,22,0.06);
-  box-shadow:0 0 0 2px rgba(249,115,22,0.15);
-}
-.classroom-slot.violation{
-  border-color:var(--red);background:var(--red-bg);
-}
-.classroom-slot.warning{
-  border-color:var(--yellow);background:var(--yellow-bg);
-}
-.classroom-slot.has-students:not(.violation):not(.warning) {
-  border-color:rgba(249,115,22,0.25);background:var(--panel);
-}
-.classroom-slot.truly-empty {
-  border-style:dashed;border-color:rgba(255,255,255,0.06);background:rgba(255,255,255,0.01);opacity:0.75;
+:root {
+  --navy: #1e293b;
+  --amber: #d97706;
+  --coral: #f97316;
+  --cream: #fef9f0;
+  --cream-90: rgba(254,249,240,0.9);
+  --cream-70: rgba(254,249,240,0.7);
+  --cream-50: rgba(254,249,240,0.5);
+  --cream-30: rgba(254,249,240,0.3);
+  --glass-bg: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.15);
+  --ease-out: cubic-bezier(0.16, 1, 0.32, 1);
+  --transition-scene: 700ms;
 }
 
-@keyframes pulse-red{
-  0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,.2)}
-  50%{box-shadow:0 0 0 5px rgba(239,68,68,.3)}
-}
-.room-header{
-  display:flex;align-items:baseline;justify-content:flex-start;gap:8px;
-  margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border);
-}
-.room-label{font-family:'Inter',sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.1em;color:var(--cream);text-transform:uppercase}
-.room-type{color:var(--slate-light);font-size:.65rem;font-weight:400;letter-spacing:.05em}
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); }
 
-.teacher-slot{
-  border:1px dashed rgba(249,115,22,0.25);background:rgba(249,115,22,0.04);
-  color:var(--slate-light);border-radius:var(--radius-xs);
-  min-height:28px;padding:4px 6px;margin-bottom:4px;font-size:.7rem;
-  display:flex;align-items:center;gap:4px;transition:all .2s;
+/* ── PROGRESS DOTS ── */
+.progress-bar {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; z-index: 1000;
 }
-.teacher-slot.filled{border-style:solid;border-color:rgba(249,115,22,0.4);background:rgba(249,115,22,0.08);color:var(--cream);}
-.para-slot{
-  border:1px dashed rgba(20,184,166,.25);background:rgba(20,184,166,.04);
-  border-radius:var(--radius-xs);min-height:22px;
-  padding:3px 6px;margin-bottom:4px;font-size:.65rem;color:var(--slate-light);
-  display:flex;align-items:center;gap:3px;flex-wrap:wrap;transition:all .2s;
+.progress-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cream-30); border: none; cursor: pointer;
+  transition: all 400ms var(--ease-out); padding: 0;
 }
-.para-chip{
-  background:rgba(20,184,166,0.15);color:#5eead4;
-  font-size:.6rem;font-weight:700;
-  padding:2px 6px;border-radius:12px;display:flex;align-items:center;gap:3px;
+.progress-dot.active {
+  width: 12px; height: 12px; background: var(--coral);
 }
-.para-chip .remove-btn{cursor:pointer;font-size:.7rem;margin-left:2px;opacity:.6}
-.para-chip .remove-btn:hover{opacity:1;color:var(--red)}
-
-.student-area{
-  flex:1;display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;min-height:30px;
-  background:rgba(255,255,255,0.02);border:1px dashed rgba(168,85,247,0.2);
-  border-radius:var(--radius-xs);padding:4px;transition:all .2s;
-}
-.student-chip{
-  border-radius:8px;font-size:.55rem;font-weight:700;padding:2px 5px;
-  display:flex;align-items:center;gap:2px;cursor:default;position:relative;
-  transition:all .3s ease;
-}
-.student-chip.iep{background:rgba(239,68,68,0.15);color:#fca5a5}
-.student-chip.esl{background:rgba(59,130,246,0.15);color:#93c5fd}
-.student-chip.general{background:rgba(255,255,255,0.07);color:var(--cream-70)}
-.student-chip.high-risk{background:rgba(234,179,8,0.15);color:#fde047;border:1px solid rgba(234,179,8,0.25)}
-.student-chip .remove-btn{cursor:pointer;font-size:.65rem;margin-left:2px;opacity:.5}
-.student-chip .remove-btn:hover{opacity:1;color:var(--red)}
-
-.mini-scorecard{
-  margin-top:auto;padding-top:5px;border-top:1px solid var(--border);
-  font-family:'Fira Code',monospace;font-size:.58rem;color:var(--slate);text-align:center;letter-spacing:-.02em;
+.scene-label {
+  font-family: 'Inter', sans-serif; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-50); margin-left: 10px;
+  transition: opacity 400ms ease; white-space: nowrap;
 }
 
-.violation-msg{
-  position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
-  background:var(--panel-raised);color:var(--cream);font-size:.6rem;padding:4px 8px;border-radius:6px;
-  border:1px solid var(--border);
-  white-space:nowrap;z-index:100;pointer-events:none;
-  animation:fadeInUp .3s ease;
+/* ── NAV ARROWS ── */
+.nav-arrow {
+  position: fixed; top: 50%; transform: translateY(-50%); z-index: 999;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border);
+  background: var(--glass-bg); backdrop-filter: blur(12px);
+  color: var(--coral); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 200ms ease, background 200ms ease;
 }
-@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.nav-arrow:hover { background: rgba(249,115,22,0.15); opacity: 1 !important; }
+.nav-arrow.left { left: 20px; }
+.nav-arrow.right { right: 20px; }
+body:hover .nav-arrow { opacity: 0.6; }
 
-/* RIGHT PANEL */
-.right-panel{
-  width:260px;min-width:260px;background:var(--panel);border-left:1px solid var(--border);
-  overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;
+/* ── SCENE CONTAINER ── */
+.scenes-wrapper {
+  position: relative; width: 100%; height: 100vh;
 }
-.penalty-meter{
-  background:linear-gradient(135deg,#0f172a,#1a2540);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px;text-align:center;
+.scene {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: none; opacity: 0;
+  transition: opacity var(--transition-scene) ease;
+  overflow-y: auto; overflow-x: hidden;
 }
-.penalty-label{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--slate-light);margin-bottom:4px}
-.penalty-score{
-  font-family:'Fira Code',monospace;font-weight:400;font-size:2.8rem;
-  color:var(--primary);line-height:1.1;transition:all .5s ease;
-}
-.penalty-sublabel{font-family:'Inter',sans-serif;font-style:italic;font-weight:300;font-size:.62rem;color:var(--slate-light);margin-top:4px}
-.penalty-score.dropping{animation:scorePulse .4s ease;}
-.penalty-bar-outer{
-  height:3px;background:rgba(255,255,255,0.08);border-radius:3px;margin-top:8px;overflow:hidden;
-}
-.penalty-bar-inner{height:100%;border-radius:3px;transition:width .6s ease,background .6s ease;}
-
-.breakdown-section{display:flex;flex-direction:column;gap:8px}
-.breakdown-title{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.14em;border-left:2px solid var(--primary);padding-left:6px;margin-bottom:8px}
-
-.action-buttons{display:flex;flex-direction:column;gap:8px;margin-top:auto}
-.btn{
-  padding:12px 16px;border:none;border-radius:3px;font-family:inherit;
-  font-weight:800;font-size:.85rem;cursor:pointer;transition:all .2s ease;
-  text-transform:uppercase;letter-spacing:.5px;
-}
-.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
-.btn:active{transform:translateY(0)}
-
-.btn-optimize{
-  background:var(--primary);color:#0f172a;font-family:'Inter',sans-serif;
-  font-weight:700;letter-spacing:.12em;border-radius:3px;
-  box-shadow:0 4px 20px rgba(249,115,22,0.25);
-  padding:14px;border:none;cursor:pointer;transition:all .2s ease;
-  text-transform:uppercase;font-size:.78rem;
-}
-.btn-optimize:hover{
-  background:var(--primary-light);
-  box-shadow:0 6px 24px rgba(249,115,22,0.35);transform:translateY(-1px);
-}
-.btn-optimize.running{opacity:.7;pointer-events:none}
-.btn-reset{
-  background:var(--glass);border:1px solid var(--glass-border);
-  color:var(--cream-70);font-family:'Inter',sans-serif;border-radius:3px;font-size:.72rem;letter-spacing:.10em;
-}
-.btn-reset:hover{background:rgba(255,255,255,0.08)}
-
-/* Optimizer animation */
-.student-chip.flying{animation:flyIn .6s cubic-bezier(.34,1.56,.64,1) forwards;}
-@keyframes flyIn{
-  0%{opacity:0;transform:scale(0) translateY(-20px)}
-  60%{opacity:1;transform:scale(1.2) translateY(0)}
-  100%{opacity:1;transform:scale(1) translateY(0)}
-}
-.teacher-slot.fly-in,.para-chip.fly-in{
-  animation:flyIn .5s cubic-bezier(.34,1.56,.64,1) forwards;
+.scene.active { display: flex; flex-direction: column; opacity: 1; }
+.scene.fade-out { opacity: 0; }
+.scene-content {
+  position: relative; z-index: 1; width: 100%; min-height: 100vh;
+  display: flex; flex-direction: column;
+  padding: 60px 80px;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:2px}
-::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2)}
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; } 50% { opacity: 1; }
+}
+@keyframes scroll-hint {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 0.8; transform: translateY(6px); }
+}
+@keyframes ray-pulse {
+  0%, 100% { opacity: 0.04; } 50% { opacity: 0.1; }
+}
+@keyframes fall-leaf {
+  0% { transform: translateY(-5vh) rotate(0deg) translateX(0); opacity: 0.8; }
+  100% { transform: translateY(105vh) rotate(360deg) translateX(40px); opacity: 0; }
+}
+@keyframes fall-snow {
+  0% { transform: translateY(-5vh) translateX(0); opacity: 0.6; }
+  100% { transform: translateY(105vh) translateX(15px); opacity: 0; }
+}
+@keyframes fall-confetti {
+  0% { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0.3; }
+}
+@keyframes phone-buzz {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50% { transform: rotate(-2deg); }
+  20%, 40% { transform: rotate(2deg); }
+  60% { transform: rotate(0deg); }
+}
+@keyframes count-pulse { 50% { transform: scale(1.05); } }
+@keyframes checkmark-in {
+  from { transform: scale(0) rotate(-45deg); opacity:0; }
+  to { transform: scale(1) rotate(0deg); opacity:1; }
+}
 
-/* Remove button for teacher */
-.teacher-remove{
-  cursor:pointer;margin-left:auto;font-size:.75rem;opacity:.4;transition:all .15s;
+/* ── CHARACTER IMAGES ── */
+.char-img {
+  height: 420px; width: auto; max-width: 160px; object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
+  border-bottom: 2px solid var(--coral);
+  animation: float 4s ease-in-out infinite alternate;
+  will-change: transform;
 }
-.teacher-remove:hover{opacity:1;color:var(--red)}
+.char-img.large { height: 420px; max-width: 200px; }
+.char-name {
+  font-family: 'Inter', sans-serif; font-size: 13px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-70); margin-top: 10px; text-align: center;
+}
+.char-role {
+  font-family: 'Inter', sans-serif; font-size: 11px; font-style: italic;
+  color: var(--coral); text-align: center; margin-top: 2px;
+}
+.char-card {
+  display: flex; flex-direction: column; align-items: center; min-width: 140px;
+  padding: 20px 16px; border-radius: 16px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
 
-/* Section divider */
-.section-divider{height:1px;background:var(--border);margin:4px 0}
+/* ── SPEECH BUBBLES ── */
+.speech-bubble {
+  position: relative; max-width: 340px;
+  padding: 14px 20px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-style: italic; font-size: 14px;
+  color: var(--cream-90); line-height: 1.6;
+  opacity: 0; transition: opacity 500ms ease;
+}
+.speech-bubble.visible { opacity: 1; }
+.speech-bubble::after {
+  content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 10px solid transparent; border-right: 10px solid transparent;
+  border-top: 10px solid var(--glass-border);
+}
 
-/* Empty state */
-.empty-hint{font-size:.6rem;color:#b0b8c4;font-style:italic;text-align:center;padding:6px}
+/* ── GLASS CARDS ── */
+.glass-card {
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); border-radius: 12px; padding: 20px;
+}
+.glass-card.coral-left { border-left: 3px solid var(--coral); }
+.glass-card.red-left { border-left: 4px solid #ef4444; background: rgba(239,68,68,0.08); }
 
-/* ── SCENARIO STYLES ── */
-.btn-absent{
-  background:var(--red-bg);color:#fca5a5;border:1px solid rgba(239,68,68,0.25);border-radius:6px;
-  padding:2px 6px;font-size:.55rem;font-weight:700;cursor:pointer;font-family:inherit;
-  transition:all .15s;margin-left:4px;
+/* ── NOTIFICATION CARDS ── */
+.notification {
+  padding: 14px 20px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  max-width: 380px;
 }
-.btn-absent:hover{background:#fca5a5;color:#991b1b}
-.btn-auto-cover{
-  background:var(--blue-bg);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);border-radius:6px;
-  padding:2px 6px;font-size:.55rem;font-weight:700;cursor:pointer;font-family:inherit;
-  transition:all .15s;
-}
-.btn-auto-cover:hover{background:#93c5fd;color:#1d4ed8}
-.btn-split{
-  background:var(--yellow-bg);color:#fde047;border:1px solid rgba(234,179,8,0.25);border-radius:6px;
-  padding:2px 6px;font-size:.55rem;font-weight:700;cursor:pointer;font-family:inherit;
-  transition:all .15s;
-}
-.btn-split:hover{background:#fcd34d;color:#92400e}
 
-.absent-banner{
-  background:var(--red-bg);border:1.5px solid rgba(239,68,68,0.3);border-radius:6px;
-  padding:4px 8px;font-size:.6rem;font-weight:700;color:#fca5a5;
-  text-align:center;animation:pulse-red .8s ease infinite;
+/* ── SCENE 0: WELCOME ── */
+.scene-welcome { 
+  align-items: stretch; 
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
 }
-.absent-actions{display:flex;gap:4px;margin-top:4px;justify-content:center}
-.student-chip.absent{opacity:.35;text-decoration:line-through;filter:grayscale(1)}
+.welcome-video {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.welcome-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15,23,42,0.55); z-index: 0;
+}
+.welcome-content {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; text-align: center; padding: 40px 24px;
+}
+.welcome-eyebrow {
+  font-family: 'Inter', sans-serif; font-size: 14px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--coral); font-weight: 500;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 0.3s forwards;
+}
+.welcome-title {
+  font-family: 'Playfair Display', serif; font-size: 72px; font-weight: 400;
+  color: var(--cream); margin-top: 20px; line-height: 1.1;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 0.6s forwards;
+}
+.welcome-subtitle {
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 400;
+  font-style: italic; color: var(--amber); margin-top: 8px;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 0.9s forwards;
+}
+.welcome-rule {
+  width: 80px; height: 1px; background: var(--coral); margin: 28px auto;
+  opacity: 0; animation: fadeIn 600ms var(--ease-out) 1.1s forwards;
+}
+.welcome-body {
+  font-family: 'Inter', sans-serif; font-size: 18px; color: var(--cream);
+  opacity: 0.85; max-width: 520px; line-height: 1.7; text-align: center;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 1.3s forwards;
+}
+.welcome-team {
+  font-family: 'Inter', sans-serif; font-size: 13px; color: var(--cream);
+  opacity: 0.6; letter-spacing: 0.08em; margin-top: 28px;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 1.6s forwards;
+}
+.welcome-cta {
+  margin-top: 36px; padding: 14px 36px;
+  background: transparent; border: 1px solid var(--coral); color: var(--coral);
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  border-radius: 2px; cursor: pointer;
+  transition: background 300ms ease, color 300ms ease;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 2s forwards;
+}
+.welcome-cta:hover { background: var(--coral); color: var(--navy); }
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 1;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 2.5s forwards;
+}
+.scroll-line {
+  width: 1px; height: 40px; background: var(--cream-50);
+  animation: scroll-hint 2s ease-in-out infinite;
+}
+.scroll-text {
+  font-family: 'Inter', sans-serif; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--cream-30);
+}
 
-.ratio-note{
-  font-size:.5rem;font-weight:700;padding:2px 5px;border-radius:8px;
-  margin-top:2px;text-align:center;animation:fadeInUp .3s ease;
+/* ── SCENE 1: MORNING ── */
+.scene-morning {
+  background: radial-gradient(ellipse at 50% 30%, rgba(217,119,6,0.25) 0%, rgba(30,41,59,0.95) 60%, #1e293b 100%);
 }
-.ratio-note.improved{background:var(--green-bg);color:#86efac}
-.ratio-note.worsened{background:var(--yellow-bg);color:#fde047}
+.light-ray {
+  position: absolute; top: 0; left: 50%; width: 2px; opacity: 0.06;
+  background: linear-gradient(to bottom, rgba(217,119,6,0.4), transparent 70%);
+  height: 80vh; transform-origin: top center; will-change: transform, opacity;
+  animation: ray-pulse 5s ease-in-out infinite alternate;
+}
+.scene1-header {
+  font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 400;
+  color: var(--cream); text-align: center; margin-top: 40px;
+}
+.scene1-sub {
+  font-family: 'Inter', sans-serif; font-size: 16px; color: var(--cream-70);
+  text-align: center; margin-top: 12px; line-height: 1.75; max-width: 480px;
+  align-self: center;
+}
+.principal-area {
+  display: flex; flex-direction: column; align-items: center; margin-top: 40px; gap: 20px;
+}
+.principal-avatar {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--amber), var(--coral));
+  display: flex; align-items: center; justify-content: center; font-size: 48px;
+  box-shadow: 0 8px 32px rgba(217,119,6,0.3);
+}
+.desk-silhouette {
+  width: 180px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, transparent, rgba(254,249,240,0.1), transparent);
+  margin-top: -8px;
+}
+.notif-stack {
+  display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 540px; text-align: left; margin: 0 auto;
+}
+.laptop-cta-area {
+  display: flex; flex-direction: column; align-items: center; margin-top: 32px; gap: 16px;
+}
+.css-laptop {
+  width: 160px; height: 104px; position: relative;
+}
+.laptop-lid {
+  width: 144px; height: 88px; margin: 0 auto;
+  border: 2px solid var(--amber); border-radius: 6px 6px 0 0;
+  background: rgba(217,119,6,0.08);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(217,119,6,0.15);
+}
+.laptop-base {
+  width: 160px; height: 8px; margin: 0 auto;
+  background: var(--cream-30); border-radius: 0 0 4px 4px;
+}
+.laptop-cta-btn {
+  padding: 12px 28px; border-radius: 2px;
+  background: var(--coral); color: var(--navy);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border: none; cursor: pointer;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms ease;
+  box-shadow: 0 4px 20px rgba(249,115,22,0.3);
+}
+.laptop-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(249,115,22,0.4); }
 
-.btn-enroll{
-  background:var(--primary);color:#0f172a;font-weight:600;border:none;
-  border-radius:3px;letter-spacing:0.08em;padding:8px 12px;font-family:inherit;
-  font-size:.72rem;cursor:pointer;transition:all .2s;width:100%;text-transform:uppercase;
+/* ── SCENE 2: CLASSROOM BUILDER ── */
+.scene-builder { background: var(--navy); }
+.builder-header {
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 400;
+  color: var(--cream); text-align: center;
 }
-.btn-enroll:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
-.btn-hire{
-  background:var(--green);color:#0f172a;border:none;
-  border-radius:3px;padding:8px 12px;font-family:inherit;
-  font-weight:600;font-size:.72rem;cursor:pointer;transition:all .2s;
-  width:100%;text-transform:uppercase;letter-spacing:0.08em;
+.builder-sub {
+  font-family: 'Inter', sans-serif; font-size: 15px; color: var(--cream-70);
+  text-align: center; margin-top: 8px; line-height: 1.75; max-width: 560px;
+  align-self: center;
 }
-.btn-hire:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.laptop-mockup {
+  position: relative; margin: 32px auto 0; max-width: 960px; width: 100%;
+}
+.laptop-bezel {
+  background: #1e293b; border-radius: 12px 12px 0 0; padding: 12px 12px 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.laptop-screen {
+  width: 100%; aspect-ratio: 16/10; border: none; border-radius: 4px;
+  background: #fff; display: block;
+}
+.laptop-keyboard {
+  height: 18px; background: linear-gradient(to bottom, #2d3a4d, #1e293b);
+  border-radius: 0 0 12px 12px; border: 1px solid rgba(255,255,255,0.06);
+  border-top: none;
+}
+.para-strip {
+  display: flex; justify-content: center; gap: 32px; margin-top: 36px; flex-wrap: wrap;
+}
 
-.enrollment-counter{
-  background:transparent;border:1px solid rgba(249,115,22,0.4);color:var(--primary);
-  border-radius:3px;padding:4px 12px;font-size:.65rem;font-weight:500;
-  display:inline-flex;align-items:center;gap:4px;letter-spacing:0.06em;
+/* ── SCENE 3: OCTOBER ── */
+.scene-october {
+  background: linear-gradient(180deg, #2d1f0e 0%, #1e293b 50%, #1a2332 100%);
 }
-.crisis-banner{
-  background:var(--red-bg);border:2px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);
-  padding:10px;font-size:.7rem;font-weight:700;color:#fca5a5;text-align:center;
-  animation:pulse-red .8s ease infinite;
+.leaf {
+  position: absolute; width: 12px; height: 8px; border-radius: 50% 0 50% 0;
+  opacity: 0.7; will-change: transform;
 }
-.sub-pool{
-  background:var(--glass);border:1px solid rgba(234,179,8,0.2);border-radius:var(--radius-sm);
-  padding:8px;margin-top:4px;
+.calendar-card {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: 16px 28px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
 }
-.sub-pool-title{font-size:.7rem;font-weight:800;color:var(--yellow);margin-bottom:4px}
-.birthday-badge{
-  background:var(--yellow-bg);border:1px solid rgba(234,179,8,0.25);color:#fde047;
-  font-size:.55rem;font-weight:700;padding:1px 5px;border-radius:10px;
-  display:inline-flex;align-items:center;gap:2px;
+.calendar-month {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--coral);
 }
-.scenario-section{
-  background:var(--glass);border:1px solid var(--glass-border);
-  border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;gap:6px;
+.calendar-day {
+  font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 400;
+  color: var(--cream); line-height: 1;
 }
-.scenario-title{font-size:.68rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.5px}
-.scenario-section p{color:var(--slate);font-size:.62rem}
+.alert-notif {
+  max-width: 380px; padding: 18px 22px; border-radius: 12px;
+  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+  border-left: 4px solid #ef4444; backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  line-height: 1.75;
+}
+.constraint-check {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 20px;
+}
+.check-item {
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  display: flex; align-items: center; gap: 8px;
+}
+.enrollment-counter-box {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 20px;
+  background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.3);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--coral);
+}
 
-/* ── FORMULATION MODAL ── */
-.formulation-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
-  background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;
-  animation:fadeInModal .3s ease;
+/* ── SCENE 4: FEBRUARY ── */
+.scene-february {
+  background: linear-gradient(180deg, #0f1729 0%, #1e293b 40%, #1a2332 100%);
 }
-@keyframes fadeInModal{from{opacity:0}to{opacity:1}}
-.formulation-modal{
-  background:#0a1628;border:1px solid rgba(249,115,22,0.2);border-radius:16px;
-  padding:32px 36px;max-width:720px;width:90%;max-height:85vh;overflow-y:auto;
-  box-shadow:0 20px 60px rgba(0,0,0,0.7);position:relative;
+.snowflake {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.7);
+  will-change: transform;
 }
-.formulation-modal h2{
-  font-family:'Inter',sans-serif;font-size:1.1rem;font-weight:600;color:#e2e8f0;
-  margin-bottom:6px;letter-spacing:.5px;
+.frost-corner {
+  position: absolute; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06), transparent 70%);
+  filter: blur(40px); pointer-events: none;
 }
-.formulation-modal .fm-sub{
-  font-size:.75rem;color:#94a3b8;margin-bottom:18px;
+.phone-frame {
+  width: 160px; min-height: 260px; border-radius: 24px;
+  background: #0f172a; border: 2px solid rgba(255,255,255,0.15);
+  padding: 32px 12px 20px; display: flex; flex-direction: column;
+  gap: 10px; position: relative;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
-.formulation-modal pre{
-  font-family:'Fira Code',monospace;font-size:.72rem;line-height:1.9;
-  color:#e2e8f0;white-space:pre-wrap;margin:0;
+.phone-frame.buzzing { animation: phone-buzz 0.6s ease 3; }
+.phone-notch {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 50px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1);
 }
-.formulation-modal pre .fm-keyword{color:#6366f1;font-weight:600}
-.formulation-modal pre .fm-var{color:#d97706}
-.formulation-modal pre .fm-comment{color:#64748b;font-style:italic}
-.formulation-modal pre .fm-constraint{color:#22c55e}
-.formulation-modal pre .fm-weight{color:#f97316;font-weight:600}
-.fm-close{
-  position:absolute;top:16px;right:18px;background:none;border:none;
-  color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px;
+.phone-msg {
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  font-family: 'Inter', sans-serif; font-size: 11px; color: var(--cream-90);
+  line-height: 1.6;
 }
-.fm-close:hover{color:#fff}
-.fm-divider{height:1px;background:rgba(99,102,241,.2);margin:14px 0}
+.option-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;
+  max-width: 680px;
+}
+.option-card {
+  padding: 24px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); cursor: pointer;
+  transition: all 400ms var(--ease-out); position: relative;
+}
+.option-card:hover { border-color: var(--coral); }
+.option-card.selected { border-color: #22c55e; background: rgba(34,197,94,0.08); }
+.option-card.dimmed { opacity: 0.3; pointer-events: none; }
+.option-card .option-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--coral); font-weight: 600;
+}
+.option-card h3 {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400;
+  color: var(--cream); margin-top: 8px;
+}
+.option-card p {
+  font-family: 'Inter', sans-serif; font-size: 13px; color: var(--cream-70);
+  margin-top: 8px; line-height: 1.75;
+}
+.option-check {
+  position: absolute; top: 16px; right: 16px; width: 28px; height: 28px;
+  border-radius: 50%; background: #22c55e; color: #fff;
+  display: none; align-items: center; justify-content: center; font-size: 16px;
+  animation: checkmark-in 400ms var(--ease-out);
+}
+.option-card.selected .option-check { display: flex; }
+.option-glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.15); }
+.option-glow-yellow { box-shadow: 0 0 20px rgba(234,179,8,0.15); }
+.resolution-msg {
+  margin-top: 20px; padding: 16px 24px; border-radius: 12px;
+  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;
+  color: #22c55e; display: none;
+}
 
-/* ── SOLVER STATUS ── */
-.solver-status{
-  background:var(--glass);border:1px solid var(--glass-border);
-  border-radius:var(--radius-sm);padding:10px 12px;font-size:.6rem;
-  display:flex;flex-direction:column;gap:4px;
+/* ── SCENE 5: END OF YEAR ── */
+.scene-finale {
+  background: linear-gradient(180deg, #1e293b 0%, #1a2332 50%, #172033 100%);
 }
-.solver-status .ss-row{display:flex;justify-content:space-between;align-items:center}
-.solver-status .ss-label{font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.5px}
-.solver-status .ss-value{font-weight:700;color:var(--cream);font-family:'Fira Code',monospace}
-.solver-status .ss-value.optimal{color:#22c55e}
-.solver-status .ss-value.fallback{color:#eab308}
+.confetti-piece {
+  position: absolute; will-change: transform; opacity: 0.85;
+}
+.stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  max-width: 720px; margin: 32px auto 0; width: 100%;
+}
+.stat-card {
+  padding: 24px; border-radius: 12px; text-align: center;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+.stat-icon { font-size: 28px; }
+.stat-number {
+  font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 400;
+  color: var(--cream); margin-top: 8px; line-height: 1;
+}
+.stat-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; color: var(--cream-70);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;
+}
+.celebration-row {
+  display: flex; justify-content: center; margin-top: 40px;
+}
+.celebration-row .char-img.large {
+  margin-left: -16px; position: relative;
+}
+.celebration-row .char-img.large:first-child { margin-left: 0; }
+.final-title {
+  font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 400;
+  color: var(--cream); text-align: center; margin-top: 40px;
+}
+.final-tagline {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400;
+  font-style: italic; color: var(--amber); text-align: center; margin-top: 8px;
+}
+.credits {
+  font-family: 'Inter', sans-serif; font-size: 12px; color: var(--cream-50);
+  text-align: center; margin-top: 32px; line-height: 1.75;
+}
 
-.btn-model{
-  background:transparent;border:1px solid rgba(249,115,22,0.3);
-  color:var(--primary);
-  border-radius:3px;padding:8px 12px;font-family:'Inter',sans-serif;
-  font-weight:700;font-size:.68rem;cursor:pointer;transition:all .2s;
-  width:100%;text-align:center;letter-spacing:.12em;text-transform:uppercase;
+/* ── UTILITY ── */
+.stagger { opacity: 0; }
+.stagger.visible { animation: fadeUp 700ms var(--ease-out) forwards; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.gap-32 { gap: 32px; }
+.mt-20 { margin-top: 20px; }
+.mt-32 { margin-top: 32px; }
+.text-center { text-align: center; }
+
+/* ── CTA BUTTONS (in-scene) ── */
+.scene-cta {
+  margin-top: 36px; padding: 14px 32px; align-self: center;
+  background: transparent; border: 1px solid var(--coral); color: var(--coral);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border-radius: 2px; cursor: pointer;
+  transition: background 300ms ease, color 300ms ease;
 }
-.btn-model:hover{background:rgba(249,115,22,0.08);}
+.scene-cta:hover { background: var(--coral); color: var(--navy); }
+
+/* ── CLOCK ── */
+.clock-display {
+  font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 400;
+  color: var(--cream); text-align: center;
+}
+.clock-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-50); text-align: center; margin-top: 4px;
+}
 </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/glpk.js/dist/glpk.min.js"></script>
-<script>
-// Initialize GLPK — wrapper handles async WASM fetch + XHR patching
-window.__glpk_promise = (typeof GLPK === 'function')
-  ? GLPK()
-      .then(g => { window.__glpk_instance = g; return g; })
-      .catch(e => { console.error('GLPK init failed:', e); return null; })
-  : Promise.resolve(null);
-</script>
+<!-- PROGRESS BAR -->
+<div class="progress-bar" id="progressBar"></div>
 
-<script type="text/babel">
-const { useState, useCallback, useMemo, useEffect, useRef } = React;
+<!-- NAV ARROWS -->
+<button class="nav-arrow left" id="navLeft" aria-label="Previous scene">&#8592;</button>
+<button class="nav-arrow right" id="navRight" aria-label="Next scene">&#8594;</button>
 
-// ──────────────────────────────────────────────
-// SAMPLE DATA
-// ──────────────────────────────────────────────
-const TEACHERS = [
-  { id:'t1', name:'Ms. Rivera',   certs:['SpEd','ESL','Early Childhood'], contractCap: 15, willingness: 5 },
-  { id:'t2', name:'Mr. Thompson', certs:['Early Childhood'], contractCap: 20, willingness: 4 },
-  { id:'t3', name:'Ms. Patel',    certs:['Bilingual','ESL','Early Childhood'], contractCap: 20, willingness: 5 },
-  { id:'t4', name:'Ms. Johnson',  certs:['SpEd','Early Childhood'], contractCap: 15, willingness: 3 },
-  { id:'t5', name:'Mr. Lee',      certs:['Early Childhood'], contractCap: 20, willingness: 2 },
-  { id:'t6', name:'Ms. Garcia',   certs:['SpEd','Bilingual','Early Childhood'], contractCap: 15, willingness: 4 },
-];
+<div class="scenes-wrapper" id="scenesWrapper">
 
-const PARAS = [
-  { id:'p1', name:'Para Maria',    certs:['Bilingual'] },
-  { id:'p2', name:'Para James',   certs:[] },
-  { id:'p3', name:'Para Sofia',   certs:['Bilingual'] },
-  { id:'p4', name:'Para Devon',  certs:[] },
-  { id:'p5', name:'Para Lin',     certs:[] },
-  { id:'p6', name:'Para Raj',     certs:['Bilingual'] },
-  { id:'p7', name:'Para Mei',     certs:['Bilingual'] },
-  { id:'p8', name:'Para Carlos',  certs:['Bilingual'] },
-  { id:'p9', name:'Para Aisha',   certs:[] },
-  { id:'p10', name:'Para Ben',    certs:[] },
-  { id:'p11', name:'Para Priya',  certs:['Bilingual'] },
-  { id:'p12', name:'Para Finn',   certs:[] },
-  { id:'p13', name:'Para Destiny',certs:[] },
-  { id:'p14', name:'Para Yuki',   certs:['Bilingual'] },
-];
+<!-- ═══ SCENE 0: WELCOME ═══ -->
+<div class="scene scene-welcome active" id="scene-0">
+  <video class="welcome-video" autoplay muted loop playsinline>
+    <source src="./background.mp4" type="video/mp4">
+  </video>
+  <div class="welcome-overlay"></div>
+  <div class="welcome-content">
+    <div class="welcome-eyebrow">Carnegie Mellon University · Heinz College · Spring 2026</div>
+    <h1 class="welcome-title">Optimizing Pre-Schools</h1>
+    <div class="welcome-subtitle">Principal's Edition</div>
+    <div class="welcome-rule"></div>
+    <p class="welcome-body">Every fall, preschool principals face an impossible puzzle — 250 students, 20 classrooms, dozens of constraints, and zero margin for error. This is the story of how optimization changes everything.</p>
+    <div class="welcome-team">Samuel De La Paz · Nate Edenfield · Chris Oueis · Rahul Tejannavar</div>
+    <button class="welcome-cta" id="welcomeCta">Begin the Story →</button>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <div class="scroll-text">scroll or press →</div>
+  </div>
+</div>
 
-const STUDENTS = [
-  { id:'s1',  name:'Aiden',    gender:'boy',  atRisk:18, tags:['IEP'], requiresIndividualAdult: true },
-  { id:'s2',  name:'Sofia',    gender:'girl', atRisk:8,  tags:['IEP'], requiresIndividualAdult: false },
-  { id:'s3',  name:'Jayden',   gender:'boy',  atRisk:12, tags:['IEP'], requiresIndividualAdult: true },
-  { id:'s4',  name:'Mia',      gender:'girl', atRisk:14, tags:['IEP'], requiresIndividualAdult: false },
-  { id:'s5',  name:'Ethan',    gender:'boy',  atRisk:6,  tags:['IEP'], requiresIndividualAdult: false },
-  { id:'s6',  name:'Camila',   gender:'girl', atRisk:5,  tags:['ESL'] },
-  { id:'s7',  name:'Diego',    gender:'boy',  atRisk:7,  tags:['ESL'] },
-  { id:'s8',  name:'Valentina',gender:'girl', atRisk:4,  tags:['ESL'] },
-  { id:'s9',  name:'Liam',     gender:'boy',  atRisk:16, tags:['IEP','ESL'], requiresIndividualAdult: true },
-  { id:'s10', name:'Isabella', gender:'girl', atRisk:19, tags:['IEP','ESL'], requiresIndividualAdult: true },
-  { id:'s11', name:'Noah',     gender:'boy',  atRisk:20, tags:[] },
-  { id:'s12', name:'Ava',      gender:'girl', atRisk:15, tags:[] },
-  { id:'s13', name:'Lucas',    gender:'boy',  atRisk:3,  tags:[] },
-  { id:'s14', name:'Emma',     gender:'girl', atRisk:5,  tags:[] },
-  { id:'s15', name:'Mason',    gender:'boy',  atRisk:4,  tags:[] },
-  { id:'s16', name:'Chloe',    gender:'girl', atRisk:6,  tags:[] },
-  { id:'s17', name:'Oliver',   gender:'boy',  atRisk:7,  tags:[] },
-  { id:'s18', name:'Zoe',      gender:'girl', atRisk:3,  tags:[] },
-  { id:'s19', name:'James',    gender:'boy',  atRisk:9,  tags:['Bilingual'] },
-  { id:'s20', name:'Lily',     gender:'girl', atRisk:5,  tags:['Bilingual'] },
-];
-
-const SUBS = [
-  { id:'sub1', name:'Ms. Franklin', certs:['SpEd','Early Childhood'], isSub:true, contractCap: 15, willingness: 4 },
-  { id:'sub2', name:'Mr. Ortiz',    certs:['ESL','Early Childhood'], isSub:true, contractCap: 20, willingness: 3 },
-];
-
-const RANDOM_NAMES_BOY = ['Sebastian','Mateo','Adrian','Leo','Kai','Elijah','Henry','Daniel','Ryan','Alex'];
-const RANDOM_NAMES_GIRL = ['Luna','Aria','Maya','Nora','Ella','Harper','Layla','Stella','Ruby','Ivy'];
-const BASE_ENROLLMENT = 250;
-let studentIdCounter = 21;
-
-function generateRandomStudent(isBirthday) {
-  const gender = Math.random() > 0.5 ? 'boy' : 'girl';
-  const names = gender === 'boy' ? RANDOM_NAMES_BOY : RANDOM_NAMES_GIRL;
-  const name = names[Math.floor(Math.random() * names.length)];
-  const tags = [];
-  const roll = Math.random();
-  let requiresIndividualAdult = false;
-  if (roll < 0.25) { tags.push('IEP'); requiresIndividualAdult = Math.random() > 0.5; }
-  else if (roll < 0.4) tags.push('ESL');
-  else if (roll < 0.5) { tags.push('IEP'); tags.push('ESL'); requiresIndividualAdult = Math.random() > 0.5; }
-  const atRisk = Math.floor(Math.random() * 18) + 3;
-  const id = 's' + (studentIdCounter++);
-  return { id, name, gender, atRisk, tags, isBirthday: isBirthday || false, turnsThreeToday: isBirthday || false, requiresIndividualAdult };
-}
-
-const EXTRA_STUDENTS = [
-  ...Array.from({length: 4}, () => ({ ...generateRandomStudent(), gender: 'boy', tags: ['IEP'], atRisk: Math.floor(Math.random() * 9) + 10, requiresIndividualAdult: Math.random() > 0.5 })),
-  ...Array.from({length: 4}, () => ({ ...generateRandomStudent(), gender: 'girl', tags: ['IEP'], atRisk: Math.floor(Math.random() * 9) + 10, requiresIndividualAdult: Math.random() > 0.5 })),
-  ...Array.from({length: 3}, () => ({ ...generateRandomStudent(), gender: 'boy', tags: ['ESL'], atRisk: Math.floor(Math.random() * 6) + 4, requiresIndividualAdult: false })),
-  ...Array.from({length: 3}, () => ({ ...generateRandomStudent(), gender: 'girl', tags: ['ESL'], atRisk: Math.floor(Math.random() * 6) + 4, requiresIndividualAdult: false })),
-  ...Array.from({length: 2}, () => ({ ...generateRandomStudent(), gender: 'boy', tags: ['IEP','ESL'], atRisk: Math.floor(Math.random() * 6) + 12, requiresIndividualAdult: Math.random() > 0.5 })),
-  ...Array.from({length: 2}, () => ({ ...generateRandomStudent(), gender: 'girl', tags: ['IEP','ESL'], atRisk: Math.floor(Math.random() * 6) + 12, requiresIndividualAdult: Math.random() > 0.5 })),
-  ...Array.from({length: 3}, () => ({ ...generateRandomStudent(), tags: ['Bilingual'], atRisk: Math.floor(Math.random() * 4) + 5, requiresIndividualAdult: false })),
-  ...Array.from({length: 9}, () => ({ ...generateRandomStudent(), tags: [], atRisk: Math.floor(Math.random() * 8) + 3, requiresIndividualAdult: false })),
-];
-
-const INITIAL_STUDENTS = [
-  ...STUDENTS,
-  ...EXTRA_STUDENTS
-];
-
-const initClassrooms = () => Array.from({length:20}, (_,i) => {
-  let type = 'BLENDED';
-  let maxStudents = 20;
-  let isESL = false;
-  let isBilingual = false;
-  let roomLabel = 'Blended';
-
-  if (i < 2) { 
-    type = 'IEP_ONLY'; // Autism/Multi-needs
-    maxStudents = 13;
-    roomLabel = 'Autism / Multi-Needs';
-  } else if (i < 4) { 
-    type = 'IEP_ONLY'; // Significant IEP
-    maxStudents = 13;
-    roomLabel = 'Significant IEP';
-  } else if (i < 12) { 
-    type = 'BLENDED'; 
-    maxStudents = 20;
-    roomLabel = 'Blended';
-  } else if (i < 16) {
-    type = 'BLENDED';
-    isESL = true;
-    isBilingual = true;
-    maxStudents = 20;
-    roomLabel = 'Blended · ESL';
-  } else {
-    type = 'BLENDED';
-    maxStudents = 20;
-    roomLabel = 'Blended';
-  }
-  return { 
-    id: i+1, 
-    type, 
-    maxStudents, 
-    isESL, 
-    isBilingual, 
-    roomLabel,
-    teacher: null, 
-    paras: [], 
-    students: [] 
-  };
-});
-
-// ──────────────────────────────────────────────
-// CONSTRAINT CHECKING
-// ──────────────────────────────────────────────
-function getRoomType(room) {
-  return room.type;
-}
-
-function checkHardConstraints(room) {
-  const violations = [];
-  if (room.students.length === 0 && !room.teacher) return violations;
-
-  // Students but no teacher
-  if (room.students.length > 0 && !room.teacher) {
-    violations.push('No teacher assigned');
-  }
-
-  // Teacher must have Early Childhood (all do in our data, but check anyway)
-  if (room.teacher && !room.teacher.certs.includes('Early Childhood')) {
-    violations.push('Teacher needs Early Childhood cert');
-  }
-
-  const hasIEP = room.students.some(s => s.tags.includes('IEP'));
-  const hasESL = room.students.some(s => s.tags.includes('ESL'));
-  const hasBilingual = room.students.some(s => s.tags.includes('Bilingual'));
-
-  // IEP students need SpEd certified teacher
-  if (hasIEP && room.teacher && !room.teacher.certs.includes('SpEd')) {
-    violations.push('IEP students need SpEd certified teacher');
-  }
-
-  // ESL/Bilingual students need ESL or Bilingual cert on teacher or para
-  if ((hasESL || hasBilingual) && room.teacher) {
-    const teacherHas = room.teacher.certs.includes('ESL') || room.teacher.certs.includes('Bilingual');
-    const paraHas = room.paras.some(p => p.certs.includes('Bilingual') || p.certs.includes('ESL'));
-    if (!teacherHas && !paraHas) {
-      violations.push('ESL/Bilingual students need certified staff');
-    }
-  }
-
-  const type = getRoomType(room);
-  const adultCount = (room.teacher ? 1 : 0) + room.paras.length;
-
-  if (type === 'IEP_ONLY') {
-    if (room.students.length > room.maxStudents) violations.push(`IEP room max ${room.maxStudents} students`);
-    if (adultCount > 0 && room.students.length > adultCount * 6) {
-      violations.push('IEP room: need 1 adult per 6 students');
-    }
-  }
-
-  if (type === 'BLENDED') {
-    if (room.students.length > room.maxStudents) violations.push(`Blended room max ${room.maxStudents} students`);
-    const iepCount = room.students.filter(s => s.tags.includes('IEP')).length;
-    const iepPct = iepCount / room.students.length;
-    if (iepPct > 0.3) violations.push('Blended room: IEP must be ≤30%');
-  }
-
-  // C5: Teacher contract cap
-  if (room.teacher && room.students.length > room.teacher.contractCap) {
-    violations.push(`Teacher contract cap exceeded (max ${room.teacher.contractCap})`);
-  }
-
-  return violations;
-}
-
-// ──────────────────────────────────────────────
-// PENALTY SCORING (soft constraints)
-// ──────────────────────────────────────────────
-function computePenalty(classrooms, weights) {
-  const occupied = classrooms.filter(r => r.students.length > 0);
-  if (occupied.length === 0) return { total:100, ratioImbalance:0, genderImbalance:0, highNeeds:0, iepSpread:0, bilingualMatch:0, atRiskBalance:0, inclusionPenalty:0, reluctancePenalty:0 };
-
-  // 1. Student/adult ratio balance
-  let ratioImbalance = 0;
-  const ratios = occupied.map(r => {
-    const adults = (r.teacher ? 1 : 0) + r.paras.length;
-    return adults > 0 ? r.students.length / adults : r.students.length * 3;
-  });
-  if (ratios.length > 1) {
-    const avgRatio = ratios.reduce((a,b) => a+b, 0) / ratios.length;
-    ratioImbalance = ratios.reduce((sum, r) => sum + Math.abs(r - avgRatio), 0) / ratios.length;
-    ratioImbalance = Math.min(ratioImbalance * 4, 25);
-  }
-
-  // 2. Gender balance
-  let genderImbalance = 0;
-  occupied.forEach(r => {
-    const boys = r.students.filter(s => s.gender === 'boy').length;
-    const girls = r.students.filter(s => s.gender === 'girl').length;
-    const total = boys + girls;
-    if (total > 1) {
-      genderImbalance += Math.abs(boys - girls) / total;
-    }
-  });
-  genderImbalance = Math.min((genderImbalance / Math.max(occupied.length,1)) * 40, 25);
-
-  // 3. High at-risk concentration
-  let highNeeds = 0;
-  const roomRisks = occupied.map(r => r.students.reduce((sum, s) => sum + s.atRisk, 0));
-  if (roomRisks.length > 0) {
-    const maxRisk = Math.max(...roomRisks);
-    const avgRisk = roomRisks.reduce((a,b) => a+b,0) / roomRisks.length;
-    highNeeds = avgRisk > 0 ? Math.min(((maxRisk - avgRisk) / avgRisk) * 15, 25) : 0;
-  }
-
-  // 4. IEP spread
-  let iepSpread = 0;
-  const iepCounts = occupied.map(r => r.students.filter(s => s.tags.includes('IEP')).length);
-  if (iepCounts.some(c => c > 0)) {
-    const maxIEP = Math.max(...iepCounts);
-    iepSpread = Math.min(maxIEP * 4, 25);
-  }
-
-  // 5. Bilingual matching
-  let bilingualMatch = 0;
-  occupied.forEach(r => {
-    const biStudents = r.students.filter(s => s.tags.includes('Bilingual') || s.tags.includes('ESL'));
-    if (biStudents.length > 0) {
-      const staffBi = (r.teacher && (r.teacher.certs.includes('Bilingual') || r.teacher.certs.includes('ESL'))) ||
-                       r.paras.some(p => p.certs.includes('Bilingual'));
-      if (!staffBi) bilingualMatch += biStudents.length * 3;
-    }
-  });
-  bilingualMatch = Math.min(bilingualMatch, 25);
-
-  // Goal 5: At-risk score balance
-  const totalRisk = occupied.reduce((sum,r) => 
-    sum + r.students.reduce((s2,st) => s2 + st.atRisk, 0), 0);
-  const idealRisk = occupied.length > 0 ? totalRisk / occupied.length : 0;
-  let atRiskBalance = 0;
-  occupied.forEach(r => {
-    const roomRisk = r.students.reduce((s,st) => s + st.atRisk, 0);
-    atRiskBalance += Math.abs(roomRisk - idealRisk);
-  });
-  atRiskBalance = Math.min((atRiskBalance / Math.max(occupied.length,1)) 
-    * (weights?.w5 || 3) * 0.5, 25);
-
-  // Goal 6: Inclusion preference (penalize 100% IEP segregated rooms)
-  let inclusionPenalty = 0;
-  occupied.forEach(r => {
-    const allIEP = r.students.length > 0 && 
-      r.students.every(s => s.tags.includes('IEP'));
-    if (allIEP) inclusionPenalty += (weights?.w6 || 1) * 5;
-  });
-  inclusionPenalty = Math.min(inclusionPenalty, 25);
-
-  // Goal 8: Staff willingness/reluctance
-  let reluctancePenalty = 0;
-  occupied.forEach(r => {
-    const highNeedsCount = r.students.filter(s => s.atRisk >= 15).length;
-    if (highNeedsCount > 3 && r.teacher && r.teacher.willingness < 3) {
-      reluctancePenalty += (weights?.w8 || 2) * (3 - r.teacher.willingness);
-    }
-  });
-  reluctancePenalty = Math.min(reluctancePenalty * 3, 25);
-
-  const total = Math.round(ratioImbalance + genderImbalance + highNeeds + iepSpread + bilingualMatch + atRiskBalance + inclusionPenalty + reluctancePenalty);
-  return { 
-    total: Math.min(total, 100), 
-    ratioImbalance: Math.round(ratioImbalance), 
-    genderImbalance: Math.round(genderImbalance), 
-    highNeeds: Math.round(highNeeds), 
-    iepSpread: Math.round(iepSpread), 
-    bilingualMatch: Math.round(bilingualMatch),
-    atRiskBalance: Math.round(atRiskBalance),
-    inclusionPenalty: Math.round(inclusionPenalty),
-    reluctancePenalty: Math.round(reluctancePenalty)
-  };
-}
-
-// ──────────────────────────────────────────────
-// OPTIMIZER — GLPK.js Goal Programming (2-stage)
-// ──────────────────────────────────────────────
-
-// Stage 2 helper: marginal student penalty for a room
-function computeStudentPenalty(room, weights, idealAtRiskSum, isReoptimization, currentClassrooms) {
-  const n = room.students.length;
-  if (n === 0) return 0;
-  let p = 0;
-
-  // Gender balance (legacy heuristic)
-  const boys = room.students.filter(s => s.gender === 'boy').length;
-  p += 2 * Math.abs(boys - n / 2) / n * 10;
-
-  // IEP spread (legacy heuristic to avoid over-concentration in general classes)
-  const iepCount = room.students.filter(s => s.tags.includes('IEP')).length;
-  const iepRatio = iepCount / n;
-  p += 5 * Math.abs(iepRatio - 0.15) * 10;
-
-  // Goal 5: At-risk score balance
-  const roomRiskSum = room.students.reduce((sum, s) => sum + s.atRisk, 0);
-  p += (weights.w5 || 3) * Math.abs(roomRiskSum - idealAtRiskSum);
-
-  // Goal 6: Inclusion preference
-  const isSegregated = (iepCount === n && n > 0) ? 1 : 0;
-  p += (weights.w6 || 1) * isSegregated * 50;
-
-  // Goal 7: Mid-year continuity
-  if (isReoptimization && currentClassrooms) {
-    let continuityBreaks = 0;
-    for (const student of room.students) {
-      const prevRoom = currentClassrooms.find(r => r.students.some(s => s.id === student.id));
-      if (prevRoom && prevRoom.id !== room.id) {
-        continuityBreaks += 1;
-      }
-    }
-    p += (weights.w7 || 4) * continuityBreaks * 50;
-  }
-
-  // Goal 8: Staff willingness/reluctance
-  const highNeedsCount = room.students.filter(s => s.atRisk >= 15).length;
-  if (highNeedsCount > 3 && room.teacher && room.teacher.willingness < 3) {
-    p += (weights.w8 || 2) * (3 - room.teacher.willingness) * 20;
-  }
-
-  return p;
-}
-
-// Stage 2: greedy student placement (seeded by ILP staff assignment)
-function placeStudents(rooms, students, weights, currentClassrooms, isReoptimization) {
-  // Sort students: C6 mandatory first, then IEP, then ESL, then at-risk
-  const sorted = [...students].sort((a, b) => {
-    // C6: Turn-3 IEP legal entitlement priority
-    const aC6 = (a.tags.includes('IEP') && a.turnsThreeToday) ? 1 : 0;
-    const bC6 = (b.tags.includes('IEP') && b.turnsThreeToday) ? 1 : 0;
-    if (aC6 !== bC6) return bC6 - aC6;
-
-    const aHasIEP = a.tags.includes('IEP') ? 1 : 0;
-    const bHasIEP = b.tags.includes('IEP') ? 1 : 0;
-    if (aHasIEP !== bHasIEP) return bHasIEP - aHasIEP;
-
-    const aHasESL = a.tags.includes('ESL') ? 1 : 0;
-    const bHasESL = b.tags.includes('ESL') ? 1 : 0;
-    if (aHasESL !== bHasESL) return bHasESL - aHasESL;
-
-    return b.atRisk - a.atRisk;
-  });
-
-  const totalAtRiskPoints = students.reduce((sum, s) => sum + s.atRisk, 0);
-  const idealAtRiskSum = totalAtRiskPoints / rooms.length;
-
-  for (const student of sorted) {
-    let bestRoom = null;
-    let bestDelta = Infinity;
-    const isC6 = student.tags.includes('IEP') && student.turnsThreeToday;
-
-    for (const room of rooms) {
-      if (!room.teacher) continue;
-      const testRoom = { ...room, students: [...room.students, student] };
-      const violations = checkHardConstraints(testRoom);
+<!-- ═══ SCENE 1: SCOTTY'S CRISIS ═══ -->
+<div class="scene scene-crisis" id="scene-1">
+  <div id="lightRays"></div>
+  <div class="scene-content" style="align-items:flex-start; justify-content:center; position:relative; background: radial-gradient(circle at 50% 10%, rgba(217,119,6,0.15) 0%, rgba(15,23,42,0.95) 60%, #0f172a 100%); min-height:100vh;">
+    <!-- Scotty Area -->
+    <div style="position:absolute; left: 10%; top: 30%; display:flex; flex-direction:column; align-items:center;">
+      <div class="stagger" data-delay="0" style="display:flex; flex-direction:column; align-items:center;">
+        <div style="font-family:'Inter', sans-serif; color:var(--cream-90); margin-bottom: 20px; text-align:center;">
+          <span style="font-size:24px; font-weight:600;">Meet Principal Scotty.</span><br>
+          <span style="font-size:16px; opacity:0.8;">20 classrooms. 250 students. 3 weeks until school starts.</span>
+        </div>
+        <img src="./scotty.jpg" alt="Principal Scotty" class="char-img">
+        <div class="desk-silhouette" style="margin-top:10px; width:200px;"></div>
+      </div>
       
-      // C6 students must be placed regardless of constraints if no valid room
-      // But we still try to find valid rooms first.
-      if (violations.length > 0 && !isC6) continue;
+      <div class="stagger speech-bubble" data-delay="7500" style="margin-top:30px;">
+        "I've been doing this on spreadsheets for 11 years.<br>There has to be a better way."
+      </div>
+      <button class="stagger scene-cta mt-32" data-delay="14000" id="ctaCrisis">See What They Built →</button>
+    </div>
 
-      const before = computeStudentPenalty(room, weights, idealAtRiskSum, isReoptimization, currentClassrooms);
-      room.students.push(student);
-      const after = computeStudentPenalty(room, weights, idealAtRiskSum, isReoptimization, currentClassrooms);
-      room.students.pop();
+    <!-- Crisis Cards -->
+    <div style="position:absolute; left: 45%; top: 20%; display:flex; flex-direction:column; gap:12px;">
+      <div class="stagger glass-card red-left" data-delay="2500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🗂 IEP files incomplete for 14 students</div>
+      <div class="stagger glass-card red-left" data-delay="3500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">📋 3 teachers missing Early Childhood certification</div>
+      <div class="stagger glass-card red-left" data-delay="4500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">⚖️ Union filed complaint — Room 7 over contract cap</div>
+      <div class="stagger glass-card red-left" data-delay="5500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🎂 4 students turning 3 this week — IEP entitlement starts NOW</div>
+      <div class="stagger glass-card red-left" data-delay="6500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🌍 12 bilingual students, only 1 bilingual para assigned</div>
+    </div>
 
-      const delta = after - before;
-      if (delta < bestDelta) {
-        bestDelta = delta;
-        bestRoom = room;
-      }
-    }
+    <div class="stagger" data-delay="9000" style="position:absolute; right: 5%; bottom: 10%; display:flex; flex-direction:column; align-items:center; z-index:10;">
+      <div style="font-family:'Inter', sans-serif; font-size:18px; color:var(--cream); font-style:italic; margin-bottom: 20px;">
+        Then the CMU team walked in.
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-end;">
+         <div class="stagger" data-delay="10500" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./nate.jpg" class="char-img">
+            <div class="char-name">Nate</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="10800" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./chris.jpg" class="char-img">
+            <div class="char-name">Chris</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="11100" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./rahul.jpg" class="char-img">
+            <div class="char-name">Rahul</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="11400" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./samuel.jpg" class="char-img">
+            <div class="char-name">Samuel</div><div class="char-role">CMU Consultant</div>
+         </div>
+      </div>
+      <div class="stagger speech-bubble" data-delay="12000" id="consultantGroupSpeech" style="margin-top:20px;">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scene scene-morning" id="scene-2">
+  <div class="scene-content" style="align-items:center; justify-content:center; position:relative; gap:32px;">
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div class="stagger scene1-header" data-delay="0" style="text-align: center;">The CMU Team Gets to Work</div>
+      <div class="stagger scene1-sub" data-delay="150" style="text-align: center; max-width: 560px;">Three weeks. One goal. Build a system that handles everything.</div>
+    </div>
     
-    // Fallback: If C6 student and no room evaluated favorably due to constraints blocking it
-    // Wait, the above logic already let C6 bypass constraint skips.
-    if (bestRoom) bestRoom.students.push(student);
-  }
-}
+    <div class="notif-stack" id="notifStack">
+      <div class="stagger glass-card red-left" data-delay="600" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">📐 Model the problem as a binary integer program</div>
+      <div class="stagger glass-card red-left" data-delay="1000" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">⚖️ Define 8 weighted goals — hard constraints + soft objectives</div>
+      <div class="stagger glass-card red-left" data-delay="1400" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">🚀 Solve with GLPK WebAssembly — optimal staff assignment in &lt;1s</div>
+    </div>
+    
+    <div class="stagger laptop-cta-area" data-delay="2200" style="margin-top:0;">
+      <div class="css-laptop"><div class="laptop-lid"></div><div class="laptop-base"></div></div>
+      <button class="laptop-cta-btn" id="laptopCta">See the Tool They Built →</button>
+    </div>
+  </div>
+</div>
 
-// Fallback: original greedy heuristic (used if GLPK fails)
-function heuristicAssignment(teachers, paras, students, weights, currentClassrooms, isReoptimization) {
-  const rooms = initClassrooms();
-  const sorted = [...students].sort((a, b) => {
-    const aS = (a.tags.includes('IEP') ? 100 : 0) + (a.tags.includes('ESL') ? 50 : 0) + a.atRisk;
-    const bS = (b.tags.includes('IEP') ? 100 : 0) + (b.tags.includes('ESL') ? 50 : 0) + b.atRisk;
-    return bS - aS;
+<!-- ═══ SCENE 3: CLASSROOM BUILDER ═══ -->
+<div class="scene scene-builder" id="scene-3">
+  <div class="scene-content" style="align-items:center;">
+    <h2 class="stagger builder-header" data-delay="0">Meet ClassroomIQ — the principal's optimization engine.</h2>
+    <p class="stagger builder-sub" data-delay="150">Drag. Drop. Optimize. Every constraint, every child, every certification — balanced automatically.</p>
+    <div class="stagger laptop-mockup" data-delay="300">
+      <div class="laptop-bezel">
+        <iframe id="builderIframe" class="laptop-screen" loading="lazy" title="ClassroomIQ Builder"></iframe>
+      </div>
+      <div class="laptop-keyboard"></div>
+    </div>
+    <button class="stagger scene-cta" data-delay="700" id="cta2" style="margin-top: 40px;">Fast forward to October →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 4: OCTOBER CRISIS ═══ -->
+<div class="scene scene-october" id="scene-4">
+  <div id="leaves"></div>
+  <div class="scene-content" style="position:relative;">
+    <div style="display:flex; gap:40px; margin-top:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="flex:0 0 auto; display:flex; flex-direction:column; gap:16px;">
+        <div class="stagger calendar-card" data-delay="0">
+          <div class="calendar-month">October</div>
+          <div class="calendar-day">14</div>
+        </div>
+        <div class="stagger alert-notif mt-20" data-delay="300">
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">🎂 New Enrollment Alert</div>
+          <div>Sofia M. turns 3 today.</div>
+          <div>IEP qualified. She has a legal right to start immediately.</div>
+          <div style="margin-top:6px;color:var(--coral);font-weight:600;">At-risk score: 17/20</div>
+        </div>
+        <div class="stagger enrollment-counter-box mt-20" data-delay="500">
+          📋 Enrollment: <span id="enrollCount">250</span> → <span id="enrollTarget" style="font-weight:700;">251</span>
+        </div>
+        <div class="stagger constraint-check" data-delay="800">
+          <div class="check-item">✅ Room 2 — Ms. Patel (Bilingual/ESL) has capacity</div>
+          <div class="check-item" style="animation-delay:150ms">✅ Para Maria (Bilingual) assigned to Room 2</div>
+          <div class="check-item" style="animation-delay:300ms">✅ IEP ratio within bounds</div>
+          <div class="check-item" style="margin-top:8px;color:#22c55e;font-weight:600;">Sofia is placed. Penalty score: stable.</div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:300px;">
+        <div class="stagger speech-bubble" data-delay="600" id="octoberSpeech" style="max-width:360px;">
+        </div>
+      </div>
+    </div>
+    <button class="stagger scene-cta mt-32" data-delay="1100" id="cta3">Jump to February →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 5: FEBRUARY ═══ -->
+<div class="scene scene-february" id="scene-5">
+  <div id="snow"></div>
+  <div class="frost-corner" style="top:-60px;left:-60px;"></div>
+  <div class="frost-corner" style="top:-60px;right:-60px;"></div>
+  <div class="frost-corner" style="bottom:-60px;left:-60px;"></div>
+  <div class="frost-corner" style="bottom:-60px;right:-60px;"></div>
+  <div class="scene-content" style="position:relative;">
+    <div class="stagger clock-display" data-delay="0">7:43 AM</div>
+    <div class="stagger clock-label" data-delay="100">February 12th</div>
+    <div style="display:flex;gap:40px;margin-top:32px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:0 0 auto;" class="stagger" data-delay="250">
+        <div class="phone-frame" id="phoneFrame">
+          <div class="phone-notch"></div>
+          <div class="phone-msg">📱 <strong>Ms. Rivera</strong><br>So sorry, I'm sick today. I won't be able to come in.</div>
+          <div class="phone-msg" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);margin-top:4px;">
+            ⚠️ Room 1 — No Lead Teacher<br>
+            <span style="font-size:10px;opacity:0.8;">2 students with IEP. SpEd certification required for substitute.</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:300px;">
+        <div class="stagger advisory-panel" data-delay="800" style="display:flex; align-items:flex-end; gap:16px; background:rgba(15,23,42,0.8); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
+          <div class="speech-bubble visible" style="margin-bottom:20px;">"Run AUTO-COVER — the ILP will find the feasible reassignment."</div>
+          <div style="display:flex; gap:-10px;">
+            <img src="./samuel.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./nate.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./chris.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./rahul.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+          </div>
+        </div>
+        <div class="stagger option-cards" data-delay="800" id="optionCards">
+          <div class="option-card option-glow-green" id="optionA" onclick="selectOption('A')">
+            <div class="option-check">✓</div>
+            <div class="option-label">Option A</div>
+            <h3>Assign Substitute</h3>
+            <p>Ms. Johnson — SpEd certified ✅<br>Penalty stays low.</p>
+          </div>
+          <div class="option-card option-glow-yellow" id="optionB" onclick="selectOption('B')">
+            <div class="option-check">✓</div>
+            <div class="option-label">Option B</div>
+            <h3>Split Class</h3>
+            <p>Across Rooms 3 & 5.<br>⚠️ Ratio stress in Room 3. Penalty ticks up.</p>
+          </div>
+        </div>
+        <div class="resolution-msg" id="resolutionMsg">
+          ✅ Crisis resolved. Students unaffected.
+          <button id="btnReconsider" style="display:block; margin-top:12px; font-weight:bold; letter-spacing:0.5px; border-radius:6px; padding:8px 16px; border:none; background:#cbd5e1; cursor:pointer;" onclick="resetOptions()">Reconsider Option</button>
+        </div>
+      </div>
+    </div>
+    <button class="stagger scene-cta mt-32" data-delay="1200" id="cta4">See how the year ends →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 6: END OF YEAR ═══ -->
+<div class="scene scene-finale" id="scene-6">
+  <div id="confetti"></div>
+  <div class="scene-content" style="align-items:center;justify-content:center;">
+    <h2 class="stagger" data-delay="0" style="font-family:'Playfair Display',serif;font-size:36px;font-weight:400;color:var(--cream);text-align:center;">The Results Are In</h2>
+    <div class="stagger stats-grid" data-delay="200" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-number" data-target="450" data-suffix="">0</div><div class="stat-label">Students Served</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-number" data-target="0" data-suffix="">0</div><div class="stat-label">IEP Ratio Violations</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-number" data-target="0" data-suffix="">0</div><div class="stat-label">Cert Mismatches</div></div>
+      <div class="stat-card"><div class="stat-icon">📉</div><div class="stat-number" data-target="8" data-suffix="" data-prefix="100 → ">0</div><div class="stat-label">Penalty Score</div></div>
+      <div class="stat-card"><div class="stat-icon">🏫</div><div class="stat-number" data-target="20" data-suffix="">0</div><div class="stat-label">Classrooms Optimized</div></div>
+      <div class="stat-card"><div class="stat-icon">🎂</div><div class="stat-number" data-target="47" data-suffix="">0</div><div class="stat-label">Mid-Year Enrollments</div></div>
+    </div>
+    <div class="stagger celebration-row mt-32" data-delay="600" style="align-items:flex-end;">
+      <img src="./scotty2.png" alt="Scotty" class="char-img large" style="margin-right:20px; object-fit:contain; border-bottom:none; filter:none; animation:none;">
+      <img src="./nate.jpg" alt="Nate" class="char-img" style="height:200px; animation-delay:0s">
+      <img src="./chris.jpg" alt="Chris" class="char-img" style="height:200px; animation-delay:0.3s">
+      <img src="./rahul.jpg" alt="Rahul" class="char-img" style="height:200px; animation-delay:0.6s">
+      <img src="./samuel.jpg" alt="Samuel" class="char-img" style="height:200px; animation-delay:0.9s">
+    </div>
+    <div class="stagger speech-bubble visible" data-delay="900" style="margin-top:20px;text-align:center;">"I'll never use a spreadsheet again."</div>
+    <div class="stagger final-title" data-delay="1100">ClassroomIQ</div>
+    <div class="stagger final-tagline" data-delay="1250">Goal Programming. Applied to what matters most.</div>
+    <div class="stagger credits" data-delay="1400" style="max-width:800px; margin: 32px auto 0;">
+      ClassroomIQ was designed and built by:<br>
+      <div style="display:flex; justify-content:center; gap:32px; margin: 24px 0;">
+        <img src="./nate.jpg" class="char-img" style="height:200px;">
+        <img src="./chris.jpg" class="char-img" style="height:200px;">
+        <img src="./rahul.jpg" class="char-img" style="height:200px;">
+        <img src="./samuel.jpg" class="char-img" style="height:200px;">
+      </div>
+      Nate Edenfield · Chris Oueis · Rahul Tejannavar · Samuel De La Paz<br>
+      Carnegie Mellon University — Heinz College · Management Science · Spring 2026<br>
+      Powered by GLPK.js · Goal Programming · Integer Linear Programming
+    </div>
+  </div>
+</div>
+
+</div><!-- /scenes-wrapper -->
+
+<script>
+(function() {
+  'use strict';
+
+  const SCENE_NAMES = [
+    'Welcome',          // scene-0
+    'The Crisis',       // scene-1
+    'Morning',          // scene-2
+    'Classroom Builder',// scene-3
+    'October Crisis',   // scene-4
+    'February Crisis',  // scene-5
+    'Finale'            // scene-6
+  ];
+  const TOTAL = 7;
+
+  let current = 0;
+  let transitioning = false;
+  let iframeLoaded = false;
+  let statsAnimated = false;
+  let tipTimer = null;
+  let consultantCycleId = null;
+  let paraCycleId = null;
+  let octCycleId = null;
+  let febCycleId = null;
+
+  // Preload iframe in background after 2 seconds
+  setTimeout(() => {
+    const iframe = document.getElementById('builderIframe');
+    if (iframe && !iframeLoaded) {
+      iframe.src = './builder.html';
+      iframeLoaded = true;
+    }
+  }, 2000);
+
+  /* ── Progress Dots ── */
+  const bar = document.getElementById('progressBar');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('button');
+    d.className = 'progress-dot' + (i === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Scene ' + i);
+    d.addEventListener('click', () => goTo(i));
+    bar.appendChild(d);
+  }
+  const labelEl = document.createElement('span');
+  labelEl.className = 'scene-label';
+  labelEl.textContent = SCENE_NAMES[0];
+  bar.appendChild(labelEl);
+
+  function updateDots() {
+    bar.querySelectorAll('.progress-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+    labelEl.textContent = SCENE_NAMES[current];
+  }
+
+  /* ── Scene Navigation ── */
+  function goTo(idx) {
+    if (idx < 0 || idx >= TOTAL || idx === current) return;
+    if (transitioning) return;
+    transitioning = true;
+
+    const oldScene = document.getElementById('scene-' + current);
+    const newScene = document.getElementById('scene-' + idx);
+    if (!oldScene || !newScene) { transitioning = false; return; }
+
+    // Fade out old
+    oldScene.style.transition = 'opacity 500ms ease';
+    oldScene.style.opacity = '0';
+    oldScene.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      oldScene.style.display = 'none';
+      oldScene.classList.remove('active');
+
+      // Show new scene
+      newScene.style.display = 'flex';
+      newScene.style.flexDirection = 'column';
+      newScene.style.opacity = '0';
+      newScene.style.pointerEvents = '';
+      newScene.style.transition = 'opacity 500ms ease';
+      newScene.classList.add('active');
+
+      // Force reflow then fade in
+      void newScene.offsetHeight;
+      newScene.style.opacity = '1';
+
+      current = idx;
+      updateDots();
+      onSceneEnter(idx);
+
+      // Always release the lock after 800ms maximum
+      setTimeout(() => { transitioning = false; }, 800);
+    }, 520);
+  }
+
+  // Emergency unlock — if stuck for more than 3 seconds, force release
+  setInterval(() => {
+    if (transitioning) transitioning = false;
+  }, 3000);
+
+  document.getElementById('navLeft').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('navRight').addEventListener('click', () => goTo(current + 1));
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && current < TOTAL - 1) goTo(current + 1);
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && current > 0) goTo(current - 1);
   });
-  const spedT = teachers.filter(t => t.certs.includes('SpEd'));
-  const otherT = teachers.filter(t => !t.certs.includes('SpEd'));
-  [...spedT, ...otherT].forEach((t, i) => { if (i < 20) rooms[i].teacher = t; });
-  const biP = paras.filter(p => p.certs.includes('Bilingual'));
-  const otherP = paras.filter(p => !p.certs.includes('Bilingual'));
-  const ordP = [...biP, ...otherP];
-  let pi = 0;
-  const nonBi = rooms.filter(r => r.teacher && !r.teacher.certs.includes('ESL') && !r.teacher.certs.includes('Bilingual'));
-  for (const para of ordP) {
-    if (para.certs.includes('Bilingual') && nonBi.length > pi) {
-      const rm = rooms.find(r => r.id === nonBi[pi].id);
-      rm.paras.push(para);
-    } else {
-      const need = rooms.filter(r => r.teacher && r.paras.length === 0).sort((a, b) => a.id - b.id);
-      if (need.length > 0) need[0].paras.push(para);
-    }
-    pi++;
-  }
-  placeStudents(rooms, sorted, weights, currentClassrooms, isReoptimization);
-  return rooms;
-}
-// Stage 1: GLPK.js Goal Programming ILP for staff assignment
-async function solveStaffAssignment(teachers, paras, rooms, currentClassrooms, weights, onStatus) {
-  onStatus('formulating');
-  const glpk = window.__glpk_instance || await window.__glpk_promise;
-  if (!glpk) return { status: 'FALLBACK', reason: 'GLPK unavailable', varCount: 0, constraintCount: 0 };
 
-  const T = teachers.length;
-  const A = paras.length;
-  const R = rooms.length;
-
-  // Variable naming helpers
-  const xName = (t, r) => `x_t${t}_r${r}`;
-  const pName = (a, r) => `p_a${a}_r${r}`;
-
-  // Collect binary vars
-  const binaries = [];
-  for (let t = 0; t < T; t++)
-    for (let r = 0; r < R; r++)
-      binaries.push(xName(t, r));
-  for (let a = 0; a < A; a++)
-    for (let r = 0; r < R; r++)
-      binaries.push(pName(a, r));
-
-  // Deviation variables (continuous >= 0) — named d_minus_{goalType}_r{r}
-  const deviations = [];
-  const objVars = [];
-  const goalConstraints = [];
-
-  // Goal 1: SpEd coverage — rooms with IEP students need SpEd teacher
-  for (let r = 0; r < R; r++) {
-    const roomDef = rooms[r];
-    if (roomDef.type === 'IEP_ONLY' || roomDef.type === 'BLENDED') {
-      const dName = `d_minus_sped_r${r}`;
-      deviations.push(dName);
-      objVars.push({ name: dName, coef: weights.w1 });
-      // Σ_t x[t][r] * hasSpEd[t] + d_minus >= 1
-      const vars = [];
-      for (let t = 0; t < T; t++) {
-        if (teachers[t].certs.includes('SpEd')) {
-          vars.push({ name: xName(t, r), coef: 1 });
-        }
-      }
-      vars.push({ name: dName, coef: 1 });
-      goalConstraints.push({
-        name: `g1_sped_r${r}`,
-        vars: vars,
-        bnds: { type: glpk.GLP_LO, lb: 1, ub: 0 }
-      });
-    }
+  /* CTAs */
+  function onBtn(id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
   }
 
-  // Goal 2: ESL/Bilingual coverage
-  for (let r = 0; r < R; r++) {
-    const roomDef = rooms[r];
-    if (roomDef.isESL) {
-      const dName = `d_minus_esl_r${r}`;
-      deviations.push(dName);
-      objVars.push({ name: dName, coef: weights.w2 });
-      const vars = [];
-      for (let t = 0; t < T; t++) {
-        if (teachers[t].certs.includes('ESL') || teachers[t].certs.includes('Bilingual')) {
-          vars.push({ name: xName(t, r), coef: 1 });
-        }
-      }
-      for (let a = 0; a < A; a++) {
-        if (paras[a].certs.includes('Bilingual')) {
-          vars.push({ name: pName(a, r), coef: 1 });
-        }
-      }
-      vars.push({ name: dName, coef: 1 });
-      goalConstraints.push({
-        name: `g2_esl_r${r}`,
-        vars: vars,
-        bnds: { type: glpk.GLP_LO, lb: 1, ub: 0 }
-      });
-    }
-  }
+  onBtn('welcomeCta', () => goTo(1));
+  onBtn('ctaCrisis',  () => goTo(2));
+  onBtn('laptopCta',  () => goTo(3));
+  onBtn('cta2',       () => goTo(4));
+  onBtn('cta3',       () => goTo(5));
+  onBtn('cta4',       () => goTo(6));
 
-  // Goal 3: Bilingual para distribution
-  for (let r = 0; r < R; r++) {
-    const roomDef = rooms[r];
-    if (roomDef.isBilingual) {
-      const dName = `d_minus_bil_r${r}`;
-      deviations.push(dName);
-      objVars.push({ name: dName, coef: weights.w3 });
-      const vars = [];
-      for (let a = 0; a < A; a++) {
-        if (paras[a].certs.includes('Bilingual')) {
-          vars.push({ name: pName(a, r), coef: 1 });
-        }
-      }
-      vars.push({ name: dName, coef: 1 });
-      goalConstraints.push({
-        name: `g3_bil_r${r}`,
-        vars: vars,
-        bnds: { type: glpk.GLP_LO, lb: 1, ub: 0 }
-      });
-    }
-  }
-
-  // Goal 4: Para count per room
-  for (let r = 0; r < R; r++) {
-    const roomDef = rooms[r];
-    const roomTypeMin = roomDef.type === 'IEP_ONLY' ? 2 : (roomDef.type === 'BLENDED' ? 1 : 0);
-    const indCount = roomDef.students.filter(s => s.tags.includes('IEP') && s.requiresIndividualAdult).length;
-    const requiredParas = Math.max(roomTypeMin, indCount);
-
-    if (requiredParas > 0) {
-      const dName = `d_minus_para_r${r}`;
-      deviations.push(dName);
-      objVars.push({ name: dName, coef: weights.w4 });
-      const vars = [];
-      for (let a = 0; a < A; a++) {
-        vars.push({ name: pName(a, r), coef: 1 });
-      }
-      vars.push({ name: dName, coef: 1 });
-      goalConstraints.push({
-        name: `g4_para_r${r}`,
-        vars: vars,
-        bnds: { type: glpk.GLP_LO, lb: requiredParas, ub: 0 }
-      });
-    }
-  }
-
-  // Hard constraints
-  const hardConstraints = [];
-
-  // C1: Each teacher assigned to exactly one room
-  for (let t = 0; t < T; t++) {
-    const vars = [];
-    for (let r = 0; r < R; r++) vars.push({ name: xName(t, r), coef: 1 });
-    hardConstraints.push({
-      name: `c1_teacher_${t}`,
-      vars: vars,
-      bnds: { type: glpk.GLP_FX, lb: 1, ub: 1 }
+  /* ── Stagger Animations ── */
+  function animateStaggered(sceneEl) {
+    const items = sceneEl.querySelectorAll('.stagger');
+    items.forEach(el => { el.classList.remove('visible'); });
+    items.forEach(el => {
+      const delay = parseInt(el.dataset.delay || '0', 10);
+      setTimeout(() => el.classList.add('visible'), delay);
     });
   }
 
-  // C2: Each room has at most one teacher (exactly one if we have enough teachers; <= 1 otherwise)
-  for (let r = 0; r < R; r++) {
-    const vars = [];
-    for (let t = 0; t < T; t++) vars.push({ name: xName(t, r), coef: 1 });
-    hardConstraints.push({
-      name: `c2_room_${r}`,
-      vars: vars,
-      bnds: { type: glpk.GLP_UP, lb: 0, ub: 1 }
+  /* ── Particle Generators ── */
+  function createLightRays() {
+    const container = document.getElementById('lightRays');
+    if (container.children.length > 0) return;
+    const angles = [-25, -15, -8, 0, 8, 15, 25];
+    angles.forEach((angle, i) => {
+      const ray = document.createElement('div');
+      ray.className = 'light-ray';
+      ray.style.transform = 'rotate(' + angle + 'deg)';
+      ray.style.animationDelay = (i * 0.7) + 's';
+      ray.style.height = (50 + Math.random() * 30) + 'vh';
+      container.appendChild(ray);
     });
   }
 
-  // C3: Each para assigned to exactly one room
-  for (let a = 0; a < A; a++) {
-    const vars = [];
-    for (let r = 0; r < R; r++) vars.push({ name: pName(a, r), coef: 1 });
-    hardConstraints.push({
-      name: `c3_para_${a}`,
-      vars: vars,
-      bnds: { type: glpk.GLP_FX, lb: 1, ub: 1 }
-    });
-  }
-
-  // C4: Teachers without Early Childhood cert cannot be assigned (remove variables)
-  // Enforced by fixing those variables to 0
-  for (let t = 0; t < T; t++) {
-    if (!teachers[t].certs.includes('Early Childhood')) {
-      for (let r = 0; r < R; r++) {
-        hardConstraints.push({
-          name: `c4_nocert_t${t}_r${r}`,
-          vars: [{ name: xName(t, r), coef: 1 }],
-          bnds: { type: glpk.GLP_FX, lb: 0, ub: 0 }
-        });
-      }
+  function createLeaves() {
+    const container = document.getElementById('leaves');
+    if (container.children.length > 0) return;
+    const colors = ['#d97706', '#f97316', '#b45309', '#92400e', '#dc2626'];
+    for (let i = 0; i < 25; i++) {
+      const leaf = document.createElement('div');
+      leaf.className = 'leaf';
+      leaf.style.left = (Math.random() * 100) + '%';
+      leaf.style.background = colors[Math.floor(Math.random() * colors.length)];
+      leaf.style.width = (8 + Math.random() * 8) + 'px';
+      leaf.style.height = (5 + Math.random() * 5) + 'px';
+      leaf.style.transform = 'rotate(' + (Math.random() * 90) + 'deg)';
+      const dur = 6 + Math.random() * 8;
+      leaf.style.animation = 'fall-leaf ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(leaf);
     }
   }
 
-  const model = {
-    name: 'ClassroomStaffGP',
-    objective: {
-      direction: glpk.GLP_MIN,
-      name: 'weighted_deviation',
-      vars: objVars
-    },
-    subjectTo: [...hardConstraints, ...goalConstraints],
-    binaries: binaries,
-    // Deviation vars are continuous >= 0.  GLPK treats unlisted vars as continuous [0, +inf) by default.
-  };
-
-  const varCount = binaries.length + deviations.length;
-  const constraintCount = hardConstraints.length + goalConstraints.length;
-
-  onStatus('solving');
-
-  // Solve with timeout
-  let result;
-  try {
-    const start = Date.now();
-    result = await glpk.solve(model, {
-      msglev: glpk.GLP_MSG_OFF,
-      cb: {
-        call: () => {
-          if (Date.now() - start > 1500) return true; // Abort after 1.5 seconds to prevent browser freeze
-        },
-        each: 10
-      }
-    });
-  } catch (e) {
-    return { status: 'FALLBACK', reason: e.message, varCount, constraintCount };
+  function createSnow() {
+    const container = document.getElementById('snow');
+    if (container.children.length > 0) return;
+    for (let i = 0; i < 30; i++) {
+      const flake = document.createElement('div');
+      flake.className = 'snowflake';
+      const size = 2 + Math.random() * 2;
+      flake.style.width = size + 'px';
+      flake.style.height = size + 'px';
+      flake.style.left = (Math.random() * 100) + '%';
+      flake.style.opacity = 0.3 + Math.random() * 0.5;
+      const dur = 8 + Math.random() * 8;
+      flake.style.animation = 'fall-snow ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(flake);
+    }
   }
 
-  const status = result.result.status;
-  if (status === glpk.GLP_OPT || status === glpk.GLP_FEAS) {
-    // Extract assignments
-    const teacherAssign = {}; // room index -> teacher
-    const paraAssign = {};    // room index -> [paras]
-    for (let r = 0; r < R; r++) paraAssign[r] = [];
-
-    for (let t = 0; t < T; t++) {
-      for (let r = 0; r < R; r++) {
-        if (result.result.vars[xName(t, r)] > 0.5) {
-          teacherAssign[r] = teachers[t];
-        }
-      }
+  function createConfetti() {
+    const container = document.getElementById('confetti');
+    if (container.children.length > 0) return;
+    const colors = ['#f97316', '#d97706', '#22c55e', '#3b82f6', '#ec4899', '#8b5cf6'];
+    for (let i = 0; i < 30; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const w = 4 + Math.random() * 6;
+      const h = Math.random() > 0.5 ? w : w * 3;
+      piece.style.width = w + 'px';
+      piece.style.height = h + 'px';
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = (Math.random() * 100) + '%';
+      const dur = 5 + Math.random() * 6;
+      piece.style.animation = 'fall-confetti ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(piece);
     }
-    for (let a = 0; a < A; a++) {
-      for (let r = 0; r < R; r++) {
-        if (result.result.vars[pName(a, r)] > 0.5) {
-          paraAssign[r].push(paras[a]);
-        }
-      }
-    }
-    return {
-      status: status === glpk.GLP_OPT ? 'OPTIMAL' : 'FEASIBLE',
-      z: result.result.z,
-      teacherAssign,
-      paraAssign,
-      varCount,
-      constraintCount,
-      solver: 'GLPK 4.65 (WebAssembly)'
-    };
-  }
-  return { status: 'INFEASIBLE', varCount, constraintCount };
-}
-
-// Main async optimizer — called by the UI
-async function optimizeAssignmentGP(teachers, paras, students, onStatus, weights, isReoptimization, currentClassrooms) {
-  const rooms = initClassrooms();
-  const result = await solveStaffAssignment(teachers, paras, rooms, currentClassrooms, weights, onStatus);
-
-  if (result.status === 'OPTIMAL' || result.status === 'FEASIBLE') {
-    // Apply ILP staff assignment
-    for (let r = 0; r < rooms.length; r++) {
-      rooms[r].teacher = result.teacherAssign[r] || null;
-      rooms[r].paras = result.paraAssign[r] || [];
-    }
-    // Stage 2: greedy student placement
-    onStatus('placing');
-    placeStudents(rooms, students, weights, currentClassrooms, isReoptimization);
-    return { rooms, solverResult: result };
   }
 
-  // Fallback to heuristic
-  onStatus('fallback');
-  const fallbackRooms = heuristicAssignment(teachers, paras, students, weights, currentClassrooms, isReoptimization);
-  return { rooms: fallbackRooms, solverResult: result };
-}
-
-// Pre-initialize GLPK (loads WASM on page load)
-const glp_init = window.__glpk_promise || Promise.resolve(null);
-
-
-// ──────────────────────────────────────────────
-// COMPONENTS
-// ──────────────────────────────────────────────
-
-function Badge({ type, label }) {
-  const cls = type === 'SpEd' ? 'badge-sped' :
-              type === 'ESL' ? 'badge-esl' :
-              type === 'Bilingual' ? 'badge-bilingual' :
-              type === 'Early Childhood' ? 'badge-ec' :
-              type === 'IEP' ? 'badge-iep' :
-              type === 'boy' ? 'badge-boy' :
-              type === 'girl' ? 'badge-girl' : '';
-  return <span className={`badge ${cls}`}>{label || type}</span>;
-}
-
-function TeacherCard({ teacher, assigned }) {
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type:'teacher', id: teacher.id }));
-    e.target.classList.add('dragging');
-  };
-  const handleDragEnd = (e) => e.target.classList.remove('dragging');
-
-  return (
-    <div className={`card card-teacher ${assigned ? 'assigned' : ''}`}
-         draggable={!assigned}
-         onDragStart={handleDragStart}
-         onDragEnd={handleDragEnd}>
-      <div className="card-name">{teacher.name}</div>
-      <div className="card-badges">
-        {teacher.certs.map(c => <Badge key={c} type={c} />)}
-      </div>
-    </div>
-  );
-}
-
-function ParaCard({ para, assigned }) {
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type:'para', id: para.id }));
-    e.target.classList.add('dragging');
-  };
-  const handleDragEnd = (e) => e.target.classList.remove('dragging');
-
-  return (
-    <div className={`card card-para ${assigned ? 'assigned' : ''}`}
-         draggable={!assigned}
-         onDragStart={handleDragStart}
-         onDragEnd={handleDragEnd}>
-      <div className="card-name">{para.name}</div>
-      <div className="card-badges">
-        {para.certs.length > 0 ? para.certs.map(c => <Badge key={c} type={c} label={c === 'Bilingual' ? <span title="Bilingual ability (not a formal certification)">Bilingual</span> : undefined} />) :
-          <span className="badge" style={{background:'#f1f5f9',color:'#94a3b8'}}>General</span>}
-      </div>
-    </div>
-  );
-}
-
-function StudentCard({ student, assigned }) {
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ type:'student', id: student.id }));
-    e.target.classList.add('dragging');
-  };
-  const handleDragEnd = (e) => e.target.classList.remove('dragging');
-
-  const riskColor = student.atRisk >= 15 ? '#ef4444' : student.atRisk >= 8 ? '#eab308' : '#22c55e';
-  const riskPct = (student.atRisk / 20) * 100;
-
-  return (
-    <div className={`card card-student ${assigned ? 'assigned' : ''}`}
-         draggable={!assigned}
-         onDragStart={handleDragStart}
-         onDragEnd={handleDragEnd}>
-      <div className="card-name">
-        {student.name}
-      </div>
-      <div className="card-badges">
-        {student.tags.map(t => <Badge key={t} type={t} />)}
-        <Badge type={student.gender} label={student.gender === 'boy' ? '♂' : '♀'} />
-      </div>
-      <div className="at-risk-bar">
-        <div className="at-risk-fill" style={{width:`${riskPct}%`, background:riskColor}} />
-      </div>
-      <div className="at-risk-label">At-risk: {student.atRisk}/20</div>
-    </div>
-  );
-}
-
-function ClassroomSlot({ room, onDrop, onRemoveTeacher, onRemovePara, onRemoveStudent, onTeacherAbsent, onAutoCover, onSplitClass, onToggleStudentAbsent, absentStudents }) {
-  const [dragOver, setDragOver] = useState(false);
-  const [showViolation, setShowViolation] = useState(false);
-
-  const presentStudents = useMemo(() => room.students.filter(s => !absentStudents.has(s.id)), [room.students, absentStudents]);
-  const violations = useMemo(() => checkHardConstraints({...room, students: presentStudents}), [room, presentStudents]);
-  const roomType = useMemo(() => getRoomType({...room, students: presentStudents}), [room, presentStudents]);
-
-  const hasViolation = violations.length > 0;
-  const iepCount = presentStudents.filter(s => s.tags.includes('IEP')).length;
-  const iepPct = presentStudents.length > 0 ? Math.round((iepCount / presentStudents.length) * 100) : 0;
-  const boys = presentStudents.filter(s => s.gender === 'boy').length;
-  const girls = presentStudents.filter(s => s.gender === 'girl').length;
-  const riskSum = presentStudents.reduce((s, st) => s + st.atRisk, 0);
-  const adultCount = (room.teacher ? 1 : 0) + room.paras.length;
-  const cap = room.type === 'IEP_ONLY' ? 13 : 20;
-
-  const absentCount = room.students.filter(s => absentStudents.has(s.id)).length;
-  const ratioImproved = absentCount > 0 && adultCount > 0 && presentStudents.length > 0 && (presentStudents.length / adultCount) < (room.students.length / adultCount);
-
-  const indAdultsNeeded = presentStudents.filter(
-    s => s.tags.includes('IEP') && s.requiresIndividualAdult
-  ).length;
-
-  const certOk = useMemo(() => {
-    if (!room.teacher) return presentStudents.length === 0;
-    const hasIEP = presentStudents.some(s => s.tags.includes('IEP'));
-    const hasESL = presentStudents.some(s => s.tags.includes('ESL') || s.tags.includes('Bilingual'));
-    if (hasIEP && !room.teacher.certs.includes('SpEd')) return false;
-    if (hasESL) {
-      const tc = room.teacher.certs.includes('ESL') || room.teacher.certs.includes('Bilingual');
-      const pc = room.paras.some(p => p.certs.includes('Bilingual'));
-      if (!tc && !pc) return false;
-    }
-    return true;
-  }, [room, presentStudents]);
-
-  const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
-  const handleDragLeave = () => setDragOver(false);
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-      onDrop(room.id, data);
-    } catch(err) {}
-  };
-
-  const isEmpty = !room.teacher && room.paras.length === 0 && room.students.length === 0;
-  const noTeacher = !room.teacher && room.students.length > 0;
-  const isHasStudents = room.students.length > 0 || room.teacher;
-  const isTrulyEmpty = room.students.length === 0 && !room.teacher && room.paras.length === 0;
-  
-  const slotClass = `classroom-slot ${dragOver ? 'drag-over' : ''} ${(hasViolation && !isEmpty) || noTeacher ? 'violation' : ''} ${isHasStudents ? 'has-students' : ''} ${isTrulyEmpty ? 'truly-empty' : ''}`;
-
-  return (
-    <div className={slotClass}
-         onDragOver={handleDragOver}
-         onDragLeave={handleDragLeave}
-         onDrop={handleDrop}
-         onMouseEnter={() => hasViolation && setShowViolation(true)}
-         onMouseLeave={() => setShowViolation(false)}>
-
-      {showViolation && violations.length > 0 && (
-        <div className="violation-msg">{violations[0]}</div>
-      )}
-
-      <div className="room-header">
-        <span className="room-label">ROOM {room.id.toString().padStart(2, '0')}</span>
-        <span className={`room-type ${room.type === 'IEP_ONLY' ? 'iep-only' : 'blended'}`}>
-          · {room.roomLabel ? room.roomLabel.toUpperCase() : (room.type === 'IEP_ONLY' ? 'IEP' : 'BLENDED')}
-        </span>
-      </div>
-
-      <div className={`teacher-slot ${room.teacher ? 'filled' : ''}`}>
-        {room.teacher ? (
-          <>
-            {room.teacher.name}
-            {room.teacher.isSub && <span className="badge badge-esl" style={{marginLeft:3,fontSize:'.5rem'}}>SUB</span>}
-            <span className="teacher-remove" onClick={() => onRemoveTeacher(room.id)}>✕</span>
-            {room.students.length > 0 && (
-              <button className="btn-absent" onClick={() => onTeacherAbsent(room.id)}>ABSENT</button>
-            )}
-          </>
-        ) : <div style={{width:'100%', textAlign:'center', fontFamily:'monospace', fontSize:'0.65rem', color:'var(--slate-light)'}}>T</div>}
-      </div>
-
-      {noTeacher && (
-        <div className="absent-banner">
-          Room {room.id} — No Lead Teacher
-          <div className="absent-actions">
-            <button className="btn-auto-cover" onClick={() => onAutoCover(room.id)}>AUTO-COVER</button>
-            <button className="btn-split" onClick={() => onSplitClass(room.id)}>SPLIT</button>
-          </div>
-        </div>
-      )}
-
-      <div className="para-slot">
-        {room.paras.length > 0 ? room.paras.map(p => (
-          <span key={p.id} className="para-chip">
-            {p.name}
-            <span className="remove-btn" onClick={() => onRemovePara(room.id, p.id)}>✕</span>
-          </span>
-        )) : <div style={{width:'100%', textAlign:'center', fontFamily:'monospace', fontSize:'0.65rem', color:'var(--slate-light)'}}>P</div>}
-      </div>
-      {room.type === 'IEP_ONLY' && room.paras.length < 2 && room.students.length > 0 && (
-        <div style={{fontSize: '0.58rem', color: '#fca5a5', marginTop: '4px', textAlign: 'center'}}>
-          Requires 2 paraprofessionals (state mandate)
-        </div>
-      )}
-
-      <div className="student-area">
-        {room.students.length > 0 ? room.students.map(s => {
-          const isAbsent = absentStudents.has(s.id);
-          const chipClass = s.tags.includes('IEP') ? 'iep' :
-                            s.tags.includes('ESL') ? 'esl' :
-                            s.atRisk >= 15 ? 'high-risk' : 'general';
-          return (
-            <span key={s.id}
-                  className={`student-chip ${chipClass} ${isAbsent ? 'absent' : ''}`}
-                  onClick={() => onToggleStudentAbsent(s.id)}
-                  style={{cursor:'pointer'}}
-                  title={isAbsent ? 'Click to mark present' : 'Click to mark absent'}>
-              {s.gender === 'boy' ? '♂' : '♀'}{s.name}
-              {s.isBirthday && <span style={{fontSize:'.5rem',background:'var(--yellow-bg)',color:'#fde047',padding:'1px 4px',borderRadius:'2px',marginLeft:'4px',fontWeight:700}}>BDAY</span>}
-              <span className="remove-btn" onClick={(e) => { e.stopPropagation(); onRemoveStudent(room.id, s.id); }}>✕</span>
-            </span>
-          );
-        }) : null}
-      </div>
-
-      {absentCount > 0 && ratioImproved && (
-        <div className="ratio-note improved">Ratio improved ({presentStudents.length}:{adultCount})</div>
-      )}
-
-      {room.students.length > 0 && (
-        <div className="mini-scorecard">
-          {presentStudents.length}/{cap}&nbsp;&nbsp;IEP {iepPct}%&nbsp;&nbsp;♂{boys} ♀{girls}&nbsp;&nbsp;Risk:{riskSum}
-          {indAdultsNeeded > 0 && <span style={{marginLeft: '8px'}}>1:1 Adults:<span style={{color: room.paras.length >= indAdultsNeeded ? 'var(--green)' : 'var(--red)'}}>{indAdultsNeeded}</span></span>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BreakdownBar({ label, value, max, color }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  const cleanLabel = label.replace(/^[^\w\s]+\s*/, '');
-  return (
-    <div style={{marginBottom:'10px'}}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
-        <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
-          <div style={{width:'3px', height:'3px', background:color}}></div>
-          <span style={{fontFamily:'Inter', fontWeight:500, fontSize:'0.68rem', color:'var(--slate)'}}>{cleanLabel}</span>
-        </div>
-        <span style={{fontFamily:'"Fira Code", monospace', fontSize:'0.68rem', fontWeight:500, color: value === 0 ? 'var(--green)' : 'var(--red)'}}>
-          {value === 0 ? '0' : `+${value}`}
-        </span>
-      </div>
-      <div style={{height:'2px', background:'rgba(255,255,255,0.06)', borderRadius:'1px', overflow:'hidden', width:'100%'}}>
-        <div style={{height:'100%', borderRadius:'1px', transition:'width 0.5s ease', width:`${pct}%`, background: color}}></div>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────
-// APP
-// ──────────────────────────────────────────────
-function App() {
-  const [classrooms, setClassrooms] = useState(initClassrooms);
-  const [optimizing, setOptimizing] = useState(false);
-  const [absentStudents, setAbsentStudents] = useState(new Set());
-  const [extraStudents, setExtraStudents] = useState([]);
-  const [extraTeachers, setExtraTeachers] = useState([]);
-  const [subsUsed, setSubsUsed] = useState(new Set());
-  const [enrollmentCount, setEnrollmentCount] = useState(BASE_ENROLLMENT);
-  const [crisisBanner, setCrisisBanner] = useState(null);
-  const [solverInfo, setSolverInfo] = useState(null);
-  const [optimizerLabel, setOptimizerLabel] = useState('RUN OPTIMIZER');
-  const [showFormulation, setShowFormulation] = useState(false);
-  const [weights, setWeights] = useState({ w1:10, w2:8, w3:5, w4:7, w5:3, w6:1, w7:4, w8:2 });
-  const scoreRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') setShowFormulation(false); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
-
-  const allTeachers = useMemo(() => [...TEACHERS, ...extraTeachers], [extraTeachers]);
-  const allStudents = useMemo(() => [...INITIAL_STUDENTS, ...extraStudents], [extraStudents]);
-
-  // Track which resources are assigned
-  const assignedTeachers = useMemo(() => {
-    const set = new Set();
-    classrooms.forEach(r => { if(r.teacher) set.add(r.teacher.id); });
-    return set;
-  }, [classrooms]);
-
-  const assignedParas = useMemo(() => {
-    const set = new Set();
-    classrooms.forEach(r => r.paras.forEach(p => set.add(p.id)));
-    return set;
-  }, [classrooms]);
-
-  const assignedStudents = useMemo(() => {
-    const set = new Set();
-    classrooms.forEach(r => r.students.forEach(s => set.add(s.id)));
-    return set;
-  }, [classrooms]);
-
-
-  const penalty = useMemo(() => computePenalty(classrooms), [classrooms]);
-
-  // Unassigned counts
-  const unassignedTeachers = allTeachers.filter(t => !assignedTeachers.has(t.id)).length;
-  const unassignedParas = PARAS.filter(p => !assignedParas.has(p.id)).length;
-  const unassignedStudents = allStudents.filter(s => !assignedStudents.has(s.id)).length;
-
-  // Base penalty from unassigned resources
-  const basePenalty = useMemo(() => {
-    return unassignedStudents > 0 ? 100 : penalty.total;
-  }, [unassignedStudents, penalty]);
-
-  const displayPenalty = unassignedStudents > 0 ? 100 : penalty.total;
-
-  // Available subs (not yet used)
-  const availableSubs = SUBS.filter(s => !subsUsed.has(s.id) && !assignedTeachers.has(s.id));
-
-  // Check if any room is at cap (for enrollment crisis)
-  const allRoomsAtCap = useMemo(() => {
-    const teacherRooms = classrooms.filter(r => r.teacher);
-    if (teacherRooms.length === 0) return false;
-    return teacherRooms.every(r => {
-      const type = getRoomType(r);
-      const cap = type === 'IEP_ONLY' ? 13 : 20;
-      return r.students.length >= cap;
-    });
-  }, [classrooms]);
-
-  const handleDrop = useCallback((roomId, data) => {
-    setClassrooms(prev => {
-      const next = prev.map(r => ({...r, teacher: r.teacher, paras:[...r.paras], students:[...r.students]}));
-      const room = next.find(r => r.id === roomId);
-
-      if (data.type === 'teacher') {
-        const teacher = [...TEACHERS, ...SUBS, ...extraTeachers].find(t => t.id === data.id);
-        if (!teacher) return prev;
-        if (next.some(r => r.teacher && r.teacher.id === teacher.id)) return prev;
-        if (room.teacher) return prev;
-        room.teacher = teacher;
-      } else if (data.type === 'para') {
-        const para = PARAS.find(p => p.id === data.id);
-        if (!para) return prev;
-        if (next.some(r => r.paras.some(p => p.id === para.id))) return prev;
-        room.paras.push(para);
-      } else if (data.type === 'student') {
-        const student = [...STUDENTS, ...extraStudents].find(s => s.id === data.id);
-        if (!student) return prev;
-        if (next.some(r => r.students.some(s => s.id === student.id))) return prev;
-        room.students.push(student);
-      }
-
-      return next;
-    });
-  }, [extraStudents, extraTeachers]);
-
-  const handleRemoveTeacher = useCallback((roomId) => {
-    setClassrooms(prev => prev.map(r => r.id === roomId ? {...r, teacher:null, paras:[...r.paras], students:[...r.students]} : r));
-  }, []);
-
-  const handleRemovePara = useCallback((roomId, paraId) => {
-    setClassrooms(prev => prev.map(r => r.id === roomId ? {...r, teacher:r.teacher, paras:r.paras.filter(p => p.id !== paraId), students:[...r.students]} : r));
-  }, []);
-
-  const handleRemoveStudent = useCallback((roomId, studentId) => {
-    setClassrooms(prev => prev.map(r => r.id === roomId ? {...r, teacher:r.teacher, paras:[...r.paras], students:r.students.filter(s => s.id !== studentId)} : r));
-  }, []);
-
-  const handleReset = useCallback(() => {
-    setClassrooms(initClassrooms());
-    setAbsentStudents(new Set());
-    setExtraStudents([]);
-    setExtraTeachers([]);
-    setSubsUsed(new Set());
-    setEnrollmentCount(BASE_ENROLLMENT);
-    setCrisisBanner(null);
-    setSolverInfo(null);
-    setOptimizerLabel('RUN OPTIMIZER');
-  }, []);
-
-  // ── SCENARIO 1: Teacher Absence ──
-  const handleTeacherAbsent = useCallback((roomId) => {
-    setClassrooms(prev => prev.map(r => r.id === roomId ? {...r, teacher:null, paras:[...r.paras], students:[...r.students]} : r));
-  }, []);
-
-  const handleAutoCover = useCallback((roomId) => {
-    const room = classrooms.find(r => r.id === roomId);
-    if (!room || room.teacher) return;
-    // Find best available sub
-    const avail = SUBS.filter(s => !subsUsed.has(s.id) && !assignedTeachers.has(s.id));
-    if (avail.length === 0) return;
-    // Pick sub with best cert match for current students
-    const hasIEP = room.students.some(s => s.tags.includes('IEP'));
-    const hasESL = room.students.some(s => s.tags.includes('ESL'));
-    let best = avail[0];
-    for (const sub of avail) {
-      let score = 0;
-      if (hasIEP && sub.certs.includes('SpEd')) score += 10;
-      if (hasESL && (sub.certs.includes('ESL') || sub.certs.includes('Bilingual'))) score += 5;
-      let bestScore = 0;
-      if (hasIEP && best.certs.includes('SpEd')) bestScore += 10;
-      if (hasESL && (best.certs.includes('ESL') || best.certs.includes('Bilingual'))) bestScore += 5;
-      if (score > bestScore) best = sub;
-    }
-    setSubsUsed(prev => new Set([...prev, best.id]));
-    setClassrooms(prev => prev.map(r => r.id === roomId ? {...r, teacher: best, paras:[...r.paras], students:[...r.students]} : r));
-  }, [classrooms, subsUsed, assignedTeachers]);
-
-  const handleSplitClass = useCallback((roomId) => {
-    setClassrooms(prev => {
-      const next = prev.map(r => ({...r, teacher:r.teacher, paras:[...r.paras], students:[...r.students]}));
-      const room = next.find(r => r.id === roomId);
-      if (!room || room.students.length === 0) return prev;
-      const studentsToSplit = [...room.students];
-      room.students = [];
-      room.paras = [];
-      // Distribute students to other rooms with teachers
-      const otherRooms = next.filter(r => r.id !== roomId && r.teacher);
-      studentsToSplit.forEach((student, i) => {
-        if (otherRooms.length > 0) {
-          const target = otherRooms[i % otherRooms.length];
-          target.students.push(student);
-        }
-      });
-      return next;
-    });
-  }, []);
-
-  // ── SCENARIO 2: Mid-Year Enrollment ──
-  const handleEnrollStudent = useCallback((isBirthday) => {
-    const newStudent = generateRandomStudent(isBirthday);
-    setExtraStudents(prev => [...prev, newStudent]);
-    setEnrollmentCount(prev => prev + 1);
-    // Check if crisis
-    const teacherRooms = classrooms.filter(r => r.teacher);
-    const allFull = teacherRooms.length > 0 && teacherRooms.every(r => {
-      const type = getRoomType(r);
-      const cap = type === 'IEP_ONLY' ? 13 : 20;
-      return r.students.length >= cap;
-    });
-    if (allFull) {
-      setCrisisBanner('Enrollment Crisis — All classrooms at capacity! New hire may be required.');
-    }
-  }, [classrooms]);
-
-  const handleHireTeacher = useCallback(() => {
-    const hireNum = extraTeachers.length + 1;
-    const newTeacher = {
-      id: 'hired' + hireNum,
-      name: `Ms. New${hireNum}`,
-      certs: ['Early Childhood'],
-      contractCap: 20,
-      willingness: 3,
-      isNew: true,
-    };
-    setExtraTeachers(prev => [...prev, newTeacher]);
-    setCrisisBanner(null);
-  }, [extraTeachers]);
-
-  // ── SCENARIO 3: Student Absence Toggle ──
-  const handleToggleStudentAbsent = useCallback((studentId) => {
-    setAbsentStudents(prev => {
-      const next = new Set(prev);
-      if (next.has(studentId)) next.delete(studentId);
-      else next.add(studentId);
-      return next;
-    });
-  }, []);
-
-  const handleOptimize = useCallback(async (overrideWeights) => {
-    if (optimizing) return;
-    setOptimizing(true);
-    
-    const activeWeights = (overrideWeights && !overrideWeights.nativeEvent) ? overrideWeights : weights;
-    const isReoptimization = classrooms.some(r => r.students.length > 0);
-    const currentClassrooms = JSON.parse(JSON.stringify(classrooms));
-    
-    setClassrooms(initClassrooms());
-    setSolverInfo(null);
-    setOptimizerLabel('Formulating model...');
-
-    const statusCb = (phase) => {
-      if (phase === 'formulating') setOptimizerLabel('Formulating model...');
-      else if (phase === 'solving') setOptimizerLabel('Running B&B solver...');
-      else if (phase === 'placing') setOptimizerLabel('Placing students...');
-      else if (phase === 'fallback') setOptimizerLabel('Using fast heuristic...');
-    };
-
-    let result;
-    try {
-      result = await optimizeAssignmentGP(allTeachers, PARAS, allStudents, statusCb, activeWeights, isReoptimization, currentClassrooms);
-    } catch (e) {
-      console.error('GP solver error:', e);
-      const rooms = heuristicAssignment(allTeachers, PARAS, allStudents, activeWeights, currentClassrooms, isReoptimization);
-      result = { rooms, solverResult: { status: 'FALLBACK', reason: e.message, varCount: 0, constraintCount: 0 } };
-    }
-
-    const { rooms: optimized, solverResult } = result;
-    setSolverInfo(solverResult);
-    setOptimizerLabel(solverResult.status === 'OPTIMAL' ? 'Optimal solution found' :
-                       solverResult.status === 'FEASIBLE' ? 'Feasible solution found' :
-                       'Heuristic solution (fallback)');
-
-    const steps = [];
-    // Build animation steps: first teachers, then paras, then students
-    optimized.forEach((room, ri) => {
-      if (room.teacher) {
-        steps.push({ type: 'teacher', roomIdx: ri, data: room.teacher, delay: ri * 80 });
-      }
-    });
-    optimized.forEach((room, ri) => {
-      room.paras.forEach((para, pi) => {
-        steps.push({ type: 'para', roomIdx: ri, data: para, delay: (allTeachers.length * 80) + (ri * 5 + pi) * 80 });
-      });
-    });
-    optimized.forEach((room, ri) => {
-      room.students.forEach((student, si) => {
-        steps.push({ type: 'student', roomIdx: ri, data: student, delay: ((allTeachers.length + PARAS.length) * 80) + (ri * allStudents.length + si) * 60 });
-      });
-    });
-
-    steps.forEach((step, i) => {
+  /* ── Speech Bubble Cycling ── */
+  function cycleSpeech(elId, lines, interval) {
+    const el = document.getElementById(elId);
+    if (!el) return null;
+    let idx = 0;
+    function show() {
+      el.classList.remove('visible');
       setTimeout(() => {
-        setClassrooms(prev => {
-          const next = prev.map(r => ({...r, teacher: r.teacher, paras:[...r.paras], students:[...r.students]}));
-          const room = next[step.roomIdx];
-          if (step.type === 'teacher') room.teacher = step.data;
-          else if (step.type === 'para') room.paras.push(step.data);
-          else room.students.push(step.data);
-          return next;
-        });
-        if (scoreRef.current) {
-          scoreRef.current.classList.remove('dropping');
-          void scoreRef.current.offsetWidth;
-          scoreRef.current.classList.add('dropping');
-        }
-        if (i === steps.length - 1) {
-          setTimeout(() => setOptimizing(false), 500);
-        }
-      }, step.delay);
+        el.innerHTML = '<strong>' + lines[idx].name + ':</strong> "' + lines[idx].text + '"';
+        el.classList.add('visible');
+        idx = (idx + 1) % lines.length;
+      }, 300);
+    }
+    show();
+    return setInterval(show, interval || 2500);
+  }
+
+  /* ── Stat Counter ── */
+  function animateCounters() {
+    if (statsAnimated) return;
+    statsAnimated = true;
+    document.querySelectorAll('#statsGrid .stat-number').forEach(el => {
+      const target = parseInt(el.dataset.target, 10);
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const duration = 1500;
+      const start = performance.now();
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = prefix + Math.round(target * eased) + suffix;
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
     });
-  }, [optimizing]);
+  }
 
-  const penaltyColor = displayPenalty > 70 ? '#ef4444' : displayPenalty > 40 ? '#f97316' : displayPenalty > 15 ? '#eab308' : '#22c55e';
-  const penaltyPct = displayPenalty;
+  /* ── Scene Enter Handler ── */
+  function onSceneEnter(idx) {
+    if (idx !== 6) statsAnimated = false;
+    const scene = document.getElementById('scene-' + idx);
+    animateStaggered(scene);
 
-  return (
-    <>
-      <header className="app-header">
-        <div className="header-bar"></div>
-        <div className="header-text-group">
-          <h1>CLASSROOMIQ</h1>
-          <div className="subtitle">Goal Programming Simulator <span style={{opacity:0.5, margin:'0 6px'}}>|</span> Interactive Demo</div>
-        </div>
-        <div style={{marginLeft:'auto',display:'flex',gap:'12px',alignItems:'center'}}>
-          <span className="enrollment-counter">Enrollment: {enrollmentCount} / 450</span>
-          <div className="stat-pill">{unassignedTeachers} teachers left</div>
-          <div className="stat-pill">{PARAS.length - assignedParas.size} paras left</div>
-          <div className="stat-pill">{unassignedStudents} students left</div>
-          {absentStudents.size > 0 && <div className="stat-pill" style={{background:'#fee2e2',color:'#dc2626'}}>{absentStudents.size} absent</div>}
-        </div>
-      </header>
+    // Clear previous timers
+    if (paraCycleId) { clearInterval(paraCycleId); paraCycleId = null; }
+    if (consultantCycleId) { clearInterval(consultantCycleId); consultantCycleId = null; }
+    if (octCycleId) { clearInterval(octCycleId); octCycleId = null; }
+    if (febCycleId) { clearInterval(febCycleId); febCycleId = null; }
 
-      <div className="app-container">
-        {/* LEFT PANEL */}
-        <div className="left-panel">
-          <div className="resource-section">
-            <div className="panel-title">TEACHERS — {unassignedTeachers}</div>
-            {allTeachers.map(t => (
-              <TeacherCard key={t.id} teacher={t} assigned={assignedTeachers.has(t.id)} />
-            ))}
-          </div>
+    if (idx === 1) {
+      createLightRays();
+      consultantCycleId = cycleSpeech('consultantGroupSpeech', [
+        { name: 'Nate', text: "We've seen this problem before." },
+        { name: 'Chris', text: "It's a multi-objective integer program." },
+        { name: 'Rahul', text: "Tractable. Give us the data." },
+        { name: 'Samuel', text: "We'll have a solution by morning." }
+      ], 2500);
+    }
+    if (idx === 2) {
+      // morning scene
+    }
+    if (idx === 3) {
+      // iframe already preloaded — nothing to do
+      const iframe = document.getElementById('builderIframe');
+      if (!iframeLoaded) {
+        iframe.src = './builder.html';
+        iframeLoaded = true;
+      }
+    }
+    if (idx === 4) {
+      createLeaves();
+      octCycleId = cycleSpeech('octoberSpeech', [
+        { name: 'Samuel', text: 'Which room can take her?' },
+        { name: 'Nate',   text: 'Room 4 is already at cap...' },
+        { name: 'Chris',  text: 'Room 2 has space — bilingual coverage confirmed.' },
+        { name: 'Rahul',  text: 'The optimizer placed her optimally.' }
+      ], 2500);
+    }
+    if (idx === 5) {
+      createSnow();
+      setTimeout(() => {
+        const phone = document.getElementById('phoneFrame');
+        if (phone) phone.classList.add('buzzing');
+        setTimeout(() => phone && phone.classList.remove('buzzing'), 2000);
+      }, 400);
+      febCycleId = cycleSpeech('febSpeech', [
+        { name: 'Nate', text: 'I can manage the room temporarily...' },
+        { name: 'Samuel', text: 'We need a certified sub ASAP.' },
+        { name: 'Chris', text: 'Or we split the kids — last resort.' },
+        { name: 'Rahul', text: 'ClassroomIQ can model both options.' }
+      ], 2500);
+    }
+    if (idx === 6) {
+      createConfetti();
+      setTimeout(animateCounters, 600);
+    }
+  }
 
-          {availableSubs.length > 0 && (
-            <div className="sub-pool">
-              <div className="sub-pool-title">SUBSTITUTES — {availableSubs.length}</div>
-              {availableSubs.map(t => (
-                <TeacherCard key={t.id} teacher={t} assigned={assignedTeachers.has(t.id)} />
-              ))}
-            </div>
-          )}
+  /* ── Option Card Selection ── */
+  window.selectOption = function(choice) {
+    const a = document.getElementById('optionA');
+    const b = document.getElementById('optionB');
+    const msg = document.getElementById('resolutionMsg');
+    if (choice === 'A') {
+      a.classList.add('selected');
+      b.classList.add('dimmed');
+    } else {
+      b.classList.add('selected');
+      a.classList.add('dimmed');
+    }
+    msg.style.display = 'block';
+    msg.style.animation = 'fadeUp 600ms cubic-bezier(0.16,1,0.32,1) forwards';
+  };
 
-          <div className="section-divider" />
-          <div className="resource-section">
-            <div className="panel-title">
-              PARAPROFESSIONALS — {PARAS.length - assignedParas.size}
-              <span style={{color: 'var(--slate-light)', fontSize: '0.58rem', textTransform: 'lowercase'}}>  ·  bilingual = ability</span>
-            </div>
-            {PARAS.map(p => (
-              <ParaCard key={p.id} para={p} assigned={assignedParas.has(p.id)} />
-            ))}
-          </div>
-          <div className="section-divider" />
-          <div className="resource-section">
-            <div className="panel-title">STUDENTS — {unassignedStudents}</div>
-            {allStudents.map(s => (
-              <StudentCard key={s.id} student={s} assigned={assignedStudents.has(s.id)} />
-            ))}
-          </div>
+  window.resetOptions = function() {
+    document.getElementById('optionA').classList.remove('selected', 'dimmed');
+    document.getElementById('optionB').classList.remove('selected', 'dimmed');
+    const msg = document.getElementById('resolutionMsg');
+    msg.style.display = 'none';
+    msg.style.animation = 'none';
+  };
 
-          <div className="section-divider" />
-          <div className="resource-section">
-            <div className="panel-title">ENROLLMENT SCENARIOS</div>
-            <button className="btn-enroll" onClick={() => handleEnrollStudent(false)}>NEW STUDENT ENROLLS</button>
-            <button className="btn-enroll" style={{background:'linear-gradient(135deg,#eab308,#facc15)',marginTop:4}} onClick={() => handleEnrollStudent(true)}>3RD BIRTHDAY IEP ENROLL</button>
-            {crisisBanner && <button className="btn-hire" style={{marginTop:4}} onClick={handleHireTeacher}>HIRE NEW TEACHER</button>}
-          </div>
-        </div>
+  /* ── Init Scene 0 ── */
+  onSceneEnter(0);
 
-        {/* CENTER PANEL */}
-        <div className="center-panel">
-          <div className="classroom-grid">
-            {classrooms.map(room => (
-              <ClassroomSlot
-                key={room.id}
-                room={room}
-                onDrop={handleDrop}
-                onRemoveTeacher={handleRemoveTeacher}
-                onRemovePara={handleRemovePara}
-                onRemoveStudent={handleRemoveStudent}
-                onTeacherAbsent={handleTeacherAbsent}
-                onAutoCover={handleAutoCover}
-                onSplitClass={handleSplitClass}
-                onToggleStudentAbsent={handleToggleStudentAbsent}
-                absentStudents={absentStudents}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="right-panel">
-          <div className="penalty-meter">
-            <div className="penalty-label">OBJECTIVE Z</div>
-            <div className="penalty-score" ref={scoreRef}>{displayPenalty}</div>
-            <div className="penalty-sublabel">minimize weighted deviations</div>
-            <div className="penalty-bar-outer">
-              <div className="penalty-bar-inner" style={{width:`${penaltyPct}%`, background: penaltyColor}} />
-            </div>
-          </div>
-
-          <div className="breakdown-section">
-            <div className="breakdown-title">BREAKDOWN</div>
-            <BreakdownBar label="Ratio Imbalance" value={penalty.ratioImbalance} max={25} color="#6366f1" />
-            <BreakdownBar label="Gender Imbalance" value={penalty.genderImbalance} max={25} color="#ec4899" />
-            <BreakdownBar label="High-Needs Concentration" value={penalty.highNeeds} max={25} color="#f97316" />
-            <BreakdownBar label="IEP Spread" value={penalty.iepSpread} max={25} color="#ef4444" />
-            <BreakdownBar label="Bilingual Match" value={penalty.bilingualMatch} max={25} color="#8b5cf6" />
-            <BreakdownBar label="Rocks in Bags  (at-risk balance)" value={penalty.atRiskBalance} max={25} color="#10b981" />
-            <BreakdownBar label="Inclusion" value={penalty.inclusionPenalty} max={25} color="#14b8a6" />
-            <BreakdownBar label="Reluctant Staff" value={penalty.reluctancePenalty} max={25} color="#0ea5e9" />
-          </div>
-
-          {unassignedStudents > 0 && (
-            <div style={{
-              background:'#fef3c7',border:'1px solid #fcd34d',borderRadius:'8px',
-              padding:'8px 10px',fontSize:'.7rem',fontWeight:700,color:'#92400e',textAlign:'center'
-            }}>
-              CRITICAL: {unassignedStudents} student{unassignedStudents > 1 ? 's' : ''} unassigned — penalty stays at max
-            </div>
-          )}
-
-          {crisisBanner && (
-            <div className="crisis-banner">{crisisBanner}</div>
-          )}
-
-          <div className="action-buttons">
-            <button className={`btn btn-optimize ${optimizing ? 'running' : ''}`} onClick={handleOptimize}>
-              {optimizing ? optimizerLabel : optimizerLabel}
-            </button>
-            <button className="btn btn-reset" onClick={handleReset}>
-              RESET
-            </button>
-            <button className="btn-model" onClick={() => setShowFormulation(true)}>
-              VIEW MODEL
-            </button>
-          </div>
-
-          {solverInfo && (
-            <div className="solver-status">
-              <div className="ss-row"><span className="ss-label">Solver</span><span className="ss-value">{solverInfo.solver || 'Greedy Heuristic'}</span></div>
-              <div className="ss-row"><span className="ss-label">Status</span><span className={`ss-value ${solverInfo.status === 'OPTIMAL' ? 'optimal' : solverInfo.status === 'FALLBACK' ? 'fallback' : ''}`}>{solverInfo.status === 'OPTIMAL' ? 'Optimal' : solverInfo.status === 'FEASIBLE' ? 'Feasible' : solverInfo.status === 'INFEASIBLE' ? 'Infeasible' : 'Fallback'}</span></div>
-              {solverInfo.z !== undefined && <div className="ss-row"><span className="ss-label">Objective Z</span><span className="ss-value">{solverInfo.z.toFixed(2)}</span></div>}
-              <div className="ss-row"><span className="ss-label">Binary Vars</span><span className="ss-value">{solverInfo.varCount}</span></div>
-              <div className="ss-row"><span className="ss-label">Constraints</span><span className="ss-value">{solverInfo.constraintCount}</span></div>
-            </div>
-          )}
-
-          <div className="scenario-section">
-            <div className="scenario-title">SCENARIOS</div>
-            <div style={{fontSize:'.6rem',color:'#78350f',lineHeight:'1.5'}}>
-              <strong>Teacher Absent</strong> — Click the "Absent" button on any assigned teacher to trigger a coverage crisis.<br/>
-              <strong>New Enrollment</strong> — Use the left panel buttons to add students mid-year. Birthday students get IEP rights.<br/>
-              <strong>Student Absent</strong> — Click any student chip in a classroom to toggle absence. Watch the ratio improve!<br/>
-              <strong>Mid-Year Re-Optimize</strong> — After new enrollments, re-run the optimizer. G7 (w={weights.w7}) penalizes moving existing students to preserve long-term relationships.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {showFormulation && (
-        <div className="formulation-overlay" onClick={() => setShowFormulation(false)}>
-          <div className="formulation-modal" onClick={e => e.stopPropagation()} style={{maxWidth: '800px'}}>
-            <button className="fm-close" onClick={() => setShowFormulation(false)}>✕</button>
-            <h2>GOAL PROGRAMMING MODEL</h2>
-            <div className="fm-sub">Stage 1 ILP (GLPK WebAssembly) + Stage 2 Student Placement</div>
-
-            <div style={{ background: '#1e293b', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#94a3b8' }}>WEIGHT SENSITIVITY ANALYSIS</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                {[
-                  { k:'w1', l:'SpEd Coverage' }, { k:'w2', l:'ESL Coverage' },
-                  { k:'w3', l:'Bil. Para' }, { k:'w4', l:'Para Count' },
-                  { k:'w5', l:'At-Risk Bal' }, { k:'w6', l:'Inclusion' },
-                  { k:'w7', l:'Continuity' }, { k:'w8', l:'Willingness' }
-                ].map(({k, l}) => (
-                  <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#cbd5e1' }}>
-                      <span>{l} (<span className="fm-var">{k}</span>)</span>
-                      <span className="fm-weight">{weights[k]}</span>
-                    </div>
-                    <input type="range" min="0" max="20" value={weights[k]} onChange={(e) => {
-                       const newW = {...weights, [k]: parseInt(e.target.value)};
-                       setWeights(newW);
-                    }} style={{ width: '100%', cursor: 'pointer', accentColor: '#f59e0b' }} />
-                  </div>
-                ))}
-              </div>
-              <button 
-                onClick={() => handleOptimize(weights)} 
-                className="btn-model"
-                style={{marginTop:'12px', width:'100%', display:'block'}}>
-                ↺ Re-optimize with current weights
-              </button>
-            </div>
-
-            <pre><span className="fm-comment">{'// Objective: minimize weighted sum of deviation variables and penalties'}</span>{'\n'}
-<span className="fm-keyword">min</span> <span className="fm-var">Z</span> = <span className="fm-weight">{weights.w1}</span>·<span className="fm-var">d⁻₁</span> + <span className="fm-weight">{weights.w2}</span>·<span className="fm-var">d⁻₂</span> + <span className="fm-weight">{weights.w3}</span>·<span className="fm-var">d⁻₃</span> + <span className="fm-weight">{weights.w4}</span>·<span className="fm-var">d⁻₄</span> + <span className="fm-weight">{weights.w5}</span>·Σ<span className="fm-var">d_risk[r]</span> + <span className="fm-weight">{weights.w6}</span>·Σ<span className="fm-var">iso[r]</span> + <span className="fm-weight">{weights.w7}</span>·<span className="fm-var">cont</span> + <span className="fm-weight">{weights.w8}</span>·<span className="fm-var">reluct</span></pre>
-
-            <div className="fm-divider" />
-
-            <pre><span className="fm-comment">{'// Stage 1: ILP Hard Constraints (Staff Assignment)'}</span>{'\n'}
-<span className="fm-constraint">[C1]</span> Σᵣ <span className="fm-var">x[t][r]</span> = 1        ∀t  <span className="fm-comment">{'// each teacher → exactly one room'}</span>{'\n'}
-<span className="fm-constraint">[C2]</span> Σₜ <span className="fm-var">x[t][r]</span> ≤ 1        ∀r  <span className="fm-comment">{'// at most one teacher per room'}</span>{'\n'}
-<span className="fm-constraint">[C3]</span> Σᵣ <span className="fm-var">p[a][r]</span> = 1        ∀a  <span className="fm-comment">{'// each para → exactly one room'}</span>{'\n'}
-<span className="fm-constraint">[C4]</span> <span className="fm-var">x[t][r]</span> = 0 if ¬EC[t]  <span className="fm-comment">{'// Early Childhood cert required'}</span></pre>
-
-            <div className="fm-divider" />
-
-            <pre><span className="fm-comment">{'// Stage 1: Goal Constraints (Staff Assignment)'}</span>{'\n'}
-<span className="fm-constraint">[G1]</span> Σₜ <span className="fm-var">x[t][r]</span>·SpEd[t] + <span className="fm-var">d⁻₁</span> ≥ 1   ∀IEP_r  <span className="fm-comment">{'// SpEd coverage'}</span>{'\n'}
-<span className="fm-constraint">[G2]</span> Σ(<span className="fm-var">x[t][r]</span>·ESL[t] + <span className="fm-var">p[a][r]</span>·bil[a]) + <span className="fm-var">d⁻₂</span> ≥ 1  ∀ESL_r  <span className="fm-comment">{'// ESL coverage'}</span>{'\n'}
-<span className="fm-constraint">[G3]</span> Σₐ <span className="fm-var">p[a][r]</span>·bil[a] + <span className="fm-var">d⁻₃</span> ≥ 1    ∀BIL_r  <span className="fm-comment">{'// Bilingual para'}</span>{'\n'}
-<span className="fm-constraint">[G4]</span> Σₐ <span className="fm-var">p[a][r]</span> + <span className="fm-var">d⁻₄</span> ≥ req[r]      ∀r  <span className="fm-comment">{'// Individual Para staffing'}</span></pre>
-
-            <div className="fm-divider" />
-
-            <pre><span className="fm-comment">{'// Stage 2: Component Student Assignment Constraints & Goals'}</span>{'\n'}
-<span className="fm-constraint">[C5]</span> |students in r| ≤ TeacherCap[t]  ∀r  <span className="fm-comment">{'// Union capacity limit'}</span>{'\n'}
-<span className="fm-constraint">[C6]</span> Turn-3 IEP student mandatory placement BypassFeasibilityCheck = True{'\n'}
-<span className="fm-constraint">[G5]</span> <span className="fm-var">d_risk[r]</span> = | Σ atRiskScore - IdealRiskSum |  <span className="fm-comment">{'// \'Rocks in Bags\' — equal at-risk point load per classroom'}</span>{'\n'}
-<span className="fm-constraint">[G6]</span> <span className="fm-var">iso[r]</span> ∈ {'{'}0,1{'}'} (1 if 100% IEP)  <span className="fm-comment">{'// Inclusion preference'}</span>{'\n'}
-<span className="fm-constraint">[G7]</span> <span className="fm-var">cont</span> = Σ (student moved to different room)  <span className="fm-comment">{'// Mid-year continuity'}</span>{'\n'}
-<span className="fm-constraint">[G8]</span> <span className="fm-var">reluct</span> = Σ (3 - willingness) for rooms with highNeeds &gt; 3  <span className="fm-comment">{'// Reluctant staff — willingness score < 3 in high-needs rooms'}</span></pre>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+})();
 </script>
 </body>
 </html>
