@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimizing Pre-Schools — Principal's Edition</title>
+<meta name="description" content="An interactive animated story showing how AI-powered optimization transforms preschool classroom management.">
+<script src="https://cdn.jsdelivr.net/npm/glpk.js/dist/glpk.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #1e293b;
+  --amber: #d97706;
+  --coral: #f97316;
+  --cream: #fef9f0;
+  --cream-90: rgba(254,249,240,0.9);
+  --cream-70: rgba(254,249,240,0.7);
+  --cream-50: rgba(254,249,240,0.5);
+  --cream-30: rgba(254,249,240,0.3);
+  --glass-bg: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.15);
+  --ease-out: cubic-bezier(0.16, 1, 0.32, 1);
+  --transition-scene: 700ms;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); }
+
+/* ── PROGRESS DOTS ── */
+.progress-bar {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; z-index: 1000;
+}
+.progress-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cream-30); border: none; cursor: pointer;
+  transition: all 400ms var(--ease-out); padding: 0;
+}
+.progress-dot.active {
+  width: 12px; height: 12px; background: var(--coral);
+}
+.scene-label {
+  font-family: 'Inter', sans-serif; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-50); margin-left: 10px;
+  transition: opacity 400ms ease; white-space: nowrap;
+}
+
+/* ── NAV ARROWS ── */
+.nav-arrow {
+  position: fixed; top: 50%; transform: translateY(-50%); z-index: 999;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border);
+  background: var(--glass-bg); backdrop-filter: blur(12px);
+  color: var(--coral); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 200ms ease, background 200ms ease;
+}
+.nav-arrow:hover { background: rgba(249,115,22,0.15); opacity: 1 !important; }
+.nav-arrow.left { left: 20px; }
+.nav-arrow.right { right: 20px; }
+body:hover .nav-arrow { opacity: 0.6; }
+
+/* ── SCENE CONTAINER ── */
+.scenes-wrapper {
+  position: relative; width: 100%; height: 100vh;
+}
+.scene {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: none; opacity: 0;
+  transition: opacity var(--transition-scene) ease;
+  overflow-y: auto; overflow-x: hidden;
+}
+.scene.active { display: flex; flex-direction: column; opacity: 1; }
+.scene.fade-out { opacity: 0; }
+.scene-content {
+  position: relative; z-index: 1; width: 100%; min-height: 100vh;
+  display: flex; flex-direction: column;
+  padding: 60px 80px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; } 50% { opacity: 1; }
+}
+@keyframes scroll-hint {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 0.8; transform: translateY(6px); }
+}
+@keyframes ray-pulse {
+  0%, 100% { opacity: 0.04; } 50% { opacity: 0.1; }
+}
+@keyframes fall-leaf {
+  0% { transform: translateY(-5vh) rotate(0deg) translateX(0); opacity: 0.8; }
+  100% { transform: translateY(105vh) rotate(360deg) translateX(40px); opacity: 0; }
+}
+@keyframes fall-snow {
+  0% { transform: translateY(-5vh) translateX(0); opacity: 0.6; }
+  100% { transform: translateY(105vh) translateX(15px); opacity: 0; }
+}
+@keyframes fall-confetti {
+  0% { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0.3; }
+}
+@keyframes phone-buzz {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50% { transform: rotate(-2deg); }
+  20%, 40% { transform: rotate(2deg); }
+  60% { transform: rotate(0deg); }
+}
+@keyframes count-pulse { 50% { transform: scale(1.05); } }
+@keyframes checkmark-in {
+  from { transform: scale(0) rotate(-45deg); opacity:0; }
+  to { transform: scale(1) rotate(0deg); opacity:1; }
+}
+
+/* ── CHARACTER IMAGES ── */
+.char-img {
+  height: 420px; width: auto; max-width: 160px; object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
+  border-bottom: 2px solid var(--coral);
+  animation: float 4s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.char-img.large { height: 420px; max-width: 200px; }
+.char-name {
+  font-family: 'Inter', sans-serif; font-size: 13px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-70); margin-top: 10px; text-align: center;
+}
+.char-role {
+  font-family: 'Inter', sans-serif; font-size: 11px; font-style: italic;
+  color: var(--coral); text-align: center; margin-top: 2px;
+}
+.char-card {
+  display: flex; flex-direction: column; align-items: center; min-width: 140px;
+  padding: 20px 16px; border-radius: 16px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+
+/* ── SPEECH BUBBLES ── */
+.speech-bubble {
+  position: relative; max-width: 340px;
+  padding: 14px 20px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-style: italic; font-size: 14px;
+  color: var(--cream-90); line-height: 1.6;
+  opacity: 0; transition: opacity 500ms ease;
+}
+.speech-bubble.visible { opacity: 1; }
+.speech-bubble::after {
+  content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 10px solid transparent; border-right: 10px solid transparent;
+  border-top: 10px solid var(--glass-border);
+}
+
+/* ── GLASS CARDS ── */
+.glass-card {
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); border-radius: 12px; padding: 20px;
+}
+.glass-card.coral-left { border-left: 3px solid var(--coral); }
+.glass-card.red-left { border-left: 4px solid #ef4444; background: rgba(239,68,68,0.08); }
+
+/* ── NOTIFICATION CARDS ── */
+.notification {
+  padding: 14px 20px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  max-width: 380px;
+}
+
+/* ── SCENE 0: WELCOME ── */
+.scene-welcome { align-items: stretch; }
+.welcome-video {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0;
+}
+.welcome-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15,23,42,0.55); z-index: 0;
+}
+.welcome-content {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; text-align: center; padding: 40px 24px;
+}
+.welcome-eyebrow {
+  font-family: 'Inter', sans-serif; font-size: 14px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--coral); font-weight: 500;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 0.3s forwards;
+}
+.welcome-title {
+  font-family: 'Playfair Display', serif; font-size: 72px; font-weight: 400;
+  color: var(--cream); margin-top: 20px; line-height: 1.1;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 0.6s forwards;
+}
+.welcome-subtitle {
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 400;
+  font-style: italic; color: var(--amber); margin-top: 8px;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 0.9s forwards;
+}
+.welcome-rule {
+  width: 80px; height: 1px; background: var(--coral); margin: 28px auto;
+  opacity: 0; animation: fadeIn 600ms var(--ease-out) 1.1s forwards;
+}
+.welcome-body {
+  font-family: 'Inter', sans-serif; font-size: 18px; color: var(--cream);
+  opacity: 0.85; max-width: 520px; line-height: 1.7; text-align: center;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 1.3s forwards;
+}
+.welcome-team {
+  font-family: 'Inter', sans-serif; font-size: 13px; color: var(--cream);
+  opacity: 0.6; letter-spacing: 0.08em; margin-top: 28px;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 1.6s forwards;
+}
+.welcome-cta {
+  margin-top: 36px; padding: 14px 36px;
+  background: transparent; border: 1px solid var(--coral); color: var(--coral);
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  border-radius: 2px; cursor: pointer;
+  transition: background 300ms ease, color 300ms ease;
+  opacity: 0; animation: fadeUp 900ms var(--ease-out) 2s forwards;
+}
+.welcome-cta:hover { background: var(--coral); color: var(--navy); }
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 1;
+  opacity: 0; animation: fadeIn 800ms var(--ease-out) 2.5s forwards;
+}
+.scroll-line {
+  width: 1px; height: 40px; background: var(--cream-50);
+  animation: scroll-hint 2s ease-in-out infinite;
+}
+.scroll-text {
+  font-family: 'Inter', sans-serif; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--cream-30);
+}
+
+/* ── SCENE 1: MORNING ── */
+.scene-morning {
+  background: radial-gradient(ellipse at 50% 30%, rgba(217,119,6,0.25) 0%, rgba(30,41,59,0.95) 60%, #1e293b 100%);
+}
+.light-ray {
+  position: absolute; top: 0; left: 50%; width: 2px; opacity: 0.06;
+  background: linear-gradient(to bottom, rgba(217,119,6,0.4), transparent 70%);
+  height: 80vh; transform-origin: top center; will-change: transform, opacity;
+  animation: ray-pulse 5s ease-in-out infinite alternate;
+}
+.scene1-header {
+  font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 400;
+  color: var(--cream); text-align: center; margin-top: 40px;
+}
+.scene1-sub {
+  font-family: 'Inter', sans-serif; font-size: 16px; color: var(--cream-70);
+  text-align: center; margin-top: 12px; line-height: 1.75; max-width: 480px;
+  align-self: center;
+}
+.principal-area {
+  display: flex; flex-direction: column; align-items: center; margin-top: 40px; gap: 20px;
+}
+.principal-avatar {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--amber), var(--coral));
+  display: flex; align-items: center; justify-content: center; font-size: 48px;
+  box-shadow: 0 8px 32px rgba(217,119,6,0.3);
+}
+.desk-silhouette {
+  width: 180px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, transparent, rgba(254,249,240,0.1), transparent);
+  margin-top: -8px;
+}
+.notif-stack {
+  display: flex; flex-direction: column; gap: 12px;
+  width: 100%; max-width: 540px; text-align: left; margin: 0 auto;
+}
+.laptop-cta-area {
+  display: flex; flex-direction: column; align-items: center; margin-top: 32px; gap: 16px;
+}
+.css-laptop {
+  width: 160px; height: 104px; position: relative;
+}
+.laptop-lid {
+  width: 144px; height: 88px; margin: 0 auto;
+  border: 2px solid var(--amber); border-radius: 6px 6px 0 0;
+  background: rgba(217,119,6,0.08);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(217,119,6,0.15);
+}
+.laptop-base {
+  width: 160px; height: 8px; margin: 0 auto;
+  background: var(--cream-30); border-radius: 0 0 4px 4px;
+}
+.laptop-cta-btn {
+  padding: 12px 28px; border-radius: 2px;
+  background: var(--coral); color: var(--navy);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border: none; cursor: pointer;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms ease;
+  box-shadow: 0 4px 20px rgba(249,115,22,0.3);
+}
+.laptop-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(249,115,22,0.4); }
+
+/* ── SCENE 2: CLASSROOM BUILDER ── */
+.scene-builder { background: var(--navy); }
+.builder-header {
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 400;
+  color: var(--cream); text-align: center;
+}
+.builder-sub {
+  font-family: 'Inter', sans-serif; font-size: 15px; color: var(--cream-70);
+  text-align: center; margin-top: 8px; line-height: 1.75; max-width: 560px;
+  align-self: center;
+}
+.laptop-mockup {
+  position: relative; margin: 32px auto 0; max-width: 960px; width: 100%;
+}
+.laptop-bezel {
+  background: #1e293b; border-radius: 12px 12px 0 0; padding: 12px 12px 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.laptop-screen {
+  width: 100%; aspect-ratio: 16/10; border: none; border-radius: 4px;
+  background: #fff; display: block;
+}
+.laptop-keyboard {
+  height: 18px; background: linear-gradient(to bottom, #2d3a4d, #1e293b);
+  border-radius: 0 0 12px 12px; border: 1px solid rgba(255,255,255,0.06);
+  border-top: none;
+}
+.para-strip {
+  display: flex; justify-content: center; gap: 32px; margin-top: 36px; flex-wrap: wrap;
+}
+
+/* ── SCENE 3: OCTOBER ── */
+.scene-october {
+  background: linear-gradient(180deg, #2d1f0e 0%, #1e293b 50%, #1a2332 100%);
+}
+.leaf {
+  position: absolute; width: 12px; height: 8px; border-radius: 50% 0 50% 0;
+  opacity: 0.7; will-change: transform;
+}
+.calendar-card {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: 16px 28px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+.calendar-month {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--coral);
+}
+.calendar-day {
+  font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 400;
+  color: var(--cream); line-height: 1;
+}
+.alert-notif {
+  max-width: 380px; padding: 18px 22px; border-radius: 12px;
+  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+  border-left: 4px solid #ef4444; backdrop-filter: blur(12px);
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  line-height: 1.75;
+}
+.constraint-check {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 20px;
+}
+.check-item {
+  font-family: 'Inter', sans-serif; font-size: 14px; color: var(--cream-90);
+  display: flex; align-items: center; gap: 8px;
+}
+.enrollment-counter-box {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 20px;
+  background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.3);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--coral);
+}
+
+/* ── SCENE 4: FEBRUARY ── */
+.scene-february {
+  background: linear-gradient(180deg, #0f1729 0%, #1e293b 40%, #1a2332 100%);
+}
+.snowflake {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.7);
+  will-change: transform;
+}
+.frost-corner {
+  position: absolute; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06), transparent 70%);
+  filter: blur(40px); pointer-events: none;
+}
+.phone-frame {
+  width: 160px; min-height: 260px; border-radius: 24px;
+  background: #0f172a; border: 2px solid rgba(255,255,255,0.15);
+  padding: 32px 12px 20px; display: flex; flex-direction: column;
+  gap: 10px; position: relative;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.phone-frame.buzzing { animation: phone-buzz 0.6s ease 3; }
+.phone-notch {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 50px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1);
+}
+.phone-msg {
+  padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  font-family: 'Inter', sans-serif; font-size: 11px; color: var(--cream-90);
+  line-height: 1.6;
+}
+.option-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;
+  max-width: 680px;
+}
+.option-card {
+  padding: 24px; border-radius: 12px;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); cursor: pointer;
+  transition: all 400ms var(--ease-out); position: relative;
+}
+.option-card:hover { border-color: var(--coral); }
+.option-card.selected { border-color: #22c55e; background: rgba(34,197,94,0.08); }
+.option-card.dimmed { opacity: 0.3; pointer-events: none; }
+.option-card .option-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--coral); font-weight: 600;
+}
+.option-card h3 {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400;
+  color: var(--cream); margin-top: 8px;
+}
+.option-card p {
+  font-family: 'Inter', sans-serif; font-size: 13px; color: var(--cream-70);
+  margin-top: 8px; line-height: 1.75;
+}
+.option-check {
+  position: absolute; top: 16px; right: 16px; width: 28px; height: 28px;
+  border-radius: 50%; background: #22c55e; color: #fff;
+  display: none; align-items: center; justify-content: center; font-size: 16px;
+  animation: checkmark-in 400ms var(--ease-out);
+}
+.option-card.selected .option-check { display: flex; }
+.option-glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.15); }
+.option-glow-yellow { box-shadow: 0 0 20px rgba(234,179,8,0.15); }
+.resolution-msg {
+  margin-top: 20px; padding: 16px 24px; border-radius: 12px;
+  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500;
+  color: #22c55e; display: none;
+}
+
+/* ── SCENE 5: END OF YEAR ── */
+.scene-finale {
+  background: linear-gradient(180deg, #1e293b 0%, #1a2332 50%, #172033 100%);
+}
+.confetti-piece {
+  position: absolute; will-change: transform; opacity: 0.85;
+}
+.stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  max-width: 720px; margin: 32px auto 0; width: 100%;
+}
+.stat-card {
+  padding: 24px; border-radius: 12px; text-align: center;
+  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+.stat-icon { font-size: 28px; }
+.stat-number {
+  font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 400;
+  color: var(--cream); margin-top: 8px; line-height: 1;
+}
+.stat-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; color: var(--cream-70);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;
+}
+.celebration-row {
+  display: flex; justify-content: center; margin-top: 40px;
+}
+.celebration-row .char-img.large {
+  margin-left: -16px; position: relative;
+}
+.celebration-row .char-img.large:first-child { margin-left: 0; }
+.final-title {
+  font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 400;
+  color: var(--cream); text-align: center; margin-top: 40px;
+}
+.final-tagline {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400;
+  font-style: italic; color: var(--amber); text-align: center; margin-top: 8px;
+}
+.credits {
+  font-family: 'Inter', sans-serif; font-size: 12px; color: var(--cream-50);
+  text-align: center; margin-top: 32px; line-height: 1.75;
+}
+
+/* ── UTILITY ── */
+.stagger { opacity: 0; }
+.stagger.visible { animation: fadeUp 700ms var(--ease-out) forwards; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.gap-32 { gap: 32px; }
+.mt-20 { margin-top: 20px; }
+.mt-32 { margin-top: 32px; }
+.text-center { text-align: center; }
+
+/* ── CTA BUTTONS (in-scene) ── */
+.scene-cta {
+  margin-top: 36px; padding: 14px 32px; align-self: center;
+  background: transparent; border: 1px solid var(--coral); color: var(--coral);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border-radius: 2px; cursor: pointer;
+  transition: background 300ms ease, color 300ms ease;
+}
+.scene-cta:hover { background: var(--coral); color: var(--navy); }
+
+/* ── CLOCK ── */
+.clock-display {
+  font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 400;
+  color: var(--cream); text-align: center;
+}
+.clock-label {
+  font-family: 'Inter', sans-serif; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--cream-50); text-align: center; margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- NAV ARROWS -->
+<button class="nav-arrow left" id="navLeft" aria-label="Previous scene">&#8592;</button>
+<button class="nav-arrow right" id="navRight" aria-label="Next scene">&#8594;</button>
+
+<div class="scenes-wrapper" id="scenesWrapper">
+
+<!-- ═══ SCENE 0: WELCOME ═══ -->
+<div class="scene scene-welcome active" id="scene-0">
+  <video class="welcome-video" autoplay muted loop playsinline>
+    <source src="./background.mp4" type="video/mp4">
+  </video>
+  <div class="welcome-overlay"></div>
+  <div class="welcome-content">
+    <div class="welcome-eyebrow">Carnegie Mellon University · Heinz College · Spring 2026</div>
+    <h1 class="welcome-title">Optimizing Pre-Schools</h1>
+    <div class="welcome-subtitle">Principal's Edition</div>
+    <div class="welcome-rule"></div>
+    <p class="welcome-body">Every fall, preschool principals face an impossible puzzle — 250 students, 20 classrooms, dozens of constraints, and zero margin for error. This is the story of how optimization changes everything.</p>
+    <div class="welcome-team">Samuel De La Paz · Nate Edenfield · Chris Oueis · Rahul Tejannavar</div>
+    <button class="welcome-cta" id="welcomeCta">Begin the Story →</button>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <div class="scroll-text">scroll or press →</div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 1: SCOTTY'S CRISIS ═══ -->
+<div class="scene scene-crisis" id="scene-1">
+  <div id="lightRays"></div>
+  <div class="scene-content" style="align-items:flex-start; justify-content:center; position:relative; background: radial-gradient(circle at 50% 10%, rgba(217,119,6,0.15) 0%, rgba(15,23,42,0.95) 60%, #0f172a 100%); min-height:100vh;">
+    <!-- Scotty Area -->
+    <div style="position:absolute; left: 10%; top: 30%; display:flex; flex-direction:column; align-items:center;">
+      <div class="stagger" data-delay="0" style="display:flex; flex-direction:column; align-items:center;">
+        <div style="font-family:'Inter', sans-serif; color:var(--cream-90); margin-bottom: 20px; text-align:center;">
+          <span style="font-size:24px; font-weight:600;">Meet Principal Scotty.</span><br>
+          <span style="font-size:16px; opacity:0.8;">20 classrooms. 250 students. 3 weeks until school starts.</span>
+        </div>
+        <img src="./scotty.jpg" alt="Principal Scotty" class="char-img">
+        <div class="desk-silhouette" style="margin-top:10px; width:200px;"></div>
+      </div>
+      
+      <div class="stagger speech-bubble" data-delay="7500" style="margin-top:30px;">
+        "I've been doing this on spreadsheets for 11 years.<br>There has to be a better way."
+      </div>
+      <button class="stagger scene-cta mt-32" data-delay="14000" id="ctaCrisis">See What They Built →</button>
+    </div>
+
+    <!-- Crisis Cards -->
+    <div style="position:absolute; left: 45%; top: 20%; display:flex; flex-direction:column; gap:12px;">
+      <div class="stagger glass-card red-left" data-delay="2500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🗂 IEP files incomplete for 14 students</div>
+      <div class="stagger glass-card red-left" data-delay="3500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">📋 3 teachers missing Early Childhood certification</div>
+      <div class="stagger glass-card red-left" data-delay="4500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">⚖️ Union filed complaint — Room 7 over contract cap</div>
+      <div class="stagger glass-card red-left" data-delay="5500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🎂 4 students turning 3 this week — IEP entitlement starts NOW</div>
+      <div class="stagger glass-card red-left" data-delay="6500" style="padding:12px 20px; font-size:14px; color:var(--cream-90);">🌍 12 bilingual students, only 1 bilingual para assigned</div>
+    </div>
+
+    <div class="stagger" data-delay="9000" style="position:absolute; right: 5%; bottom: 10%; display:flex; flex-direction:column; align-items:center; z-index:10;">
+      <div style="font-family:'Inter', sans-serif; font-size:18px; color:var(--cream); font-style:italic; margin-bottom: 20px;">
+        Then the CMU team walked in.
+      </div>
+      <div style="display:flex; gap:16px; align-items:flex-end;">
+         <div class="stagger" data-delay="10500" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./nate.jpg" class="char-img">
+            <div class="char-name">Nate</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="10800" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./chris.jpg" class="char-img">
+            <div class="char-name">Chris</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="11100" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./rahul.jpg" class="char-img">
+            <div class="char-name">Rahul</div><div class="char-role">CMU Consultant</div>
+         </div>
+         <div class="stagger" data-delay="11400" style="display:flex;flex-direction:column;align-items:center;">
+            <img src="./samuel.jpg" class="char-img">
+            <div class="char-name">Samuel</div><div class="char-role">CMU Consultant</div>
+         </div>
+      </div>
+      <div class="stagger speech-bubble" data-delay="12000" id="consultantGroupSpeech" style="margin-top:20px;">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scene scene-morning" id="scene-2">
+  <div class="scene-content" style="align-items:center; justify-content:center; position:relative; gap:32px;">
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div class="stagger scene1-header" data-delay="0" style="text-align: center;">The CMU Team Gets to Work</div>
+      <div class="stagger scene1-sub" data-delay="150" style="text-align: center; max-width: 560px;">Three weeks. One goal. Build a system that handles everything.</div>
+    </div>
+    
+    <div class="notif-stack" id="notifStack">
+      <div class="stagger glass-card red-left" data-delay="600" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">📐 Model the problem as a binary integer program</div>
+      <div class="stagger glass-card red-left" data-delay="1000" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">⚖️ Define 8 weighted goals — hard constraints + soft objectives</div>
+      <div class="stagger glass-card red-left" data-delay="1400" style="padding:16px 24px; font-size:16px; color:var(--cream-90); border-left-color: var(--coral);">🚀 Solve with GLPK WebAssembly — optimal staff assignment in &lt;1s</div>
+    </div>
+    
+    <div class="stagger laptop-cta-area" data-delay="2200" style="margin-top:0;">
+      <div class="css-laptop"><div class="laptop-lid"></div><div class="laptop-base"></div></div>
+      <button class="laptop-cta-btn" id="laptopCta">See the Tool They Built →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 3: CLASSROOM BUILDER ═══ -->
+<div class="scene scene-builder" id="scene-3">
+  <div class="scene-content" style="align-items:center;">
+    <h2 class="stagger builder-header" data-delay="0">Meet ClassroomIQ — the principal's optimization engine.</h2>
+    <p class="stagger builder-sub" data-delay="150">Drag. Drop. Optimize. Every constraint, every child, every certification — balanced automatically.</p>
+    <div class="stagger laptop-mockup" data-delay="300">
+      <div class="laptop-bezel">
+        <iframe id="builderIframe" class="laptop-screen" loading="lazy" title="ClassroomIQ Builder"></iframe>
+      </div>
+      <div class="laptop-keyboard"></div>
+    </div>
+    <button class="stagger scene-cta" data-delay="700" id="cta2" style="margin-top: 40px;">Fast forward to October →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 4: OCTOBER CRISIS ═══ -->
+<div class="scene scene-october" id="scene-4">
+  <div id="leaves"></div>
+  <div class="scene-content" style="position:relative;">
+    <div style="display:flex; gap:40px; margin-top:32px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="flex:0 0 auto; display:flex; flex-direction:column; gap:16px;">
+        <div class="stagger calendar-card" data-delay="0">
+          <div class="calendar-month">October</div>
+          <div class="calendar-day">14</div>
+        </div>
+        <div class="stagger alert-notif mt-20" data-delay="300">
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">🎂 New Enrollment Alert</div>
+          <div>Sofia M. turns 3 today.</div>
+          <div>IEP qualified. She has a legal right to start immediately.</div>
+          <div style="margin-top:6px;color:var(--coral);font-weight:600;">At-risk score: 17/20</div>
+        </div>
+        <div class="stagger enrollment-counter-box mt-20" data-delay="500">
+          📋 Enrollment: <span id="enrollCount">250</span> → <span id="enrollTarget" style="font-weight:700;">251</span>
+        </div>
+        <div class="stagger constraint-check" data-delay="800">
+          <div class="check-item">✅ Room 2 — Ms. Patel (Bilingual/ESL) has capacity</div>
+          <div class="check-item" style="animation-delay:150ms">✅ Para Maria (Bilingual) assigned to Room 2</div>
+          <div class="check-item" style="animation-delay:300ms">✅ IEP ratio within bounds</div>
+          <div class="check-item" style="margin-top:8px;color:#22c55e;font-weight:600;">Sofia is placed. Penalty score: stable.</div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:300px;">
+        <div class="stagger speech-bubble" data-delay="600" id="octoberSpeech" style="max-width:360px;">
+        </div>
+      </div>
+    </div>
+    <button class="stagger scene-cta mt-32" data-delay="1100" id="cta3">Jump to February →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 5: FEBRUARY ═══ -->
+<div class="scene scene-february" id="scene-5">
+  <div id="snow"></div>
+  <div class="frost-corner" style="top:-60px;left:-60px;"></div>
+  <div class="frost-corner" style="top:-60px;right:-60px;"></div>
+  <div class="frost-corner" style="bottom:-60px;left:-60px;"></div>
+  <div class="frost-corner" style="bottom:-60px;right:-60px;"></div>
+  <div class="scene-content" style="position:relative;">
+    <div class="stagger clock-display" data-delay="0">7:43 AM</div>
+    <div class="stagger clock-label" data-delay="100">February 12th</div>
+    <div style="display:flex;gap:40px;margin-top:32px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:0 0 auto;" class="stagger" data-delay="250">
+        <div class="phone-frame" id="phoneFrame">
+          <div class="phone-notch"></div>
+          <div class="phone-msg">📱 <strong>Ms. Rivera</strong><br>So sorry, I'm sick today. I won't be able to come in.</div>
+          <div class="phone-msg" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);margin-top:4px;">
+            ⚠️ Room 1 — No Lead Teacher<br>
+            <span style="font-size:10px;opacity:0.8;">2 students with IEP. SpEd certification required for substitute.</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:300px;">
+        <div class="stagger advisory-panel" data-delay="800" style="display:flex; align-items:flex-end; gap:16px; background:rgba(15,23,42,0.8); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
+          <div class="speech-bubble visible" style="margin-bottom:20px;">"Run AUTO-COVER — the ILP will find the feasible reassignment."</div>
+          <div style="display:flex; gap:-10px;">
+            <img src="./samuel.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./nate.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./chris.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+            <img src="./rahul.jpg" class="char-img" style="height:120px; border-bottom:none; filter:none; animation:none; margin-left:-20px;">
+          </div>
+        </div>
+        <div class="stagger option-cards" data-delay="800" id="optionCards">
+          <div class="option-card option-glow-green" id="optionA" onclick="selectOption('A')">
+            <div class="option-check">✓</div>
+            <div class="option-label">Option A</div>
+            <h3>Assign Substitute</h3>
+            <p>Ms. Johnson — SpEd certified ✅<br>Penalty stays low.</p>
+          </div>
+          <div class="option-card option-glow-yellow" id="optionB" onclick="selectOption('B')">
+            <div class="option-check">✓</div>
+            <div class="option-label">Option B</div>
+            <h3>Split Class</h3>
+            <p>Across Rooms 3 & 5.<br>⚠️ Ratio stress in Room 3. Penalty ticks up.</p>
+          </div>
+        </div>
+        <div class="resolution-msg" id="resolutionMsg">
+          ✅ Crisis resolved. Students unaffected.
+          <button id="btnReconsider" style="display:block; margin-top:12px; font-weight:bold; letter-spacing:0.5px; border-radius:6px; padding:8px 16px; border:none; background:#cbd5e1; cursor:pointer;" onclick="resetOptions()">Reconsider Option</button>
+        </div>
+      </div>
+    </div>
+    <button class="stagger scene-cta mt-32" data-delay="1200" id="cta4">See how the year ends →</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 6: END OF YEAR ═══ -->
+<div class="scene scene-finale" id="scene-6">
+  <div id="confetti"></div>
+  <div class="scene-content" style="align-items:center;justify-content:center;">
+    <h2 class="stagger" data-delay="0" style="font-family:'Playfair Display',serif;font-size:36px;font-weight:400;color:var(--cream);text-align:center;">The Results Are In</h2>
+    <div class="stagger stats-grid" data-delay="200" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-number" data-target="450" data-suffix="">0</div><div class="stat-label">Students Served</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-number" data-target="0" data-suffix="">0</div><div class="stat-label">IEP Ratio Violations</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-number" data-target="0" data-suffix="">0</div><div class="stat-label">Cert Mismatches</div></div>
+      <div class="stat-card"><div class="stat-icon">📉</div><div class="stat-number" data-target="8" data-suffix="" data-prefix="100 → ">0</div><div class="stat-label">Penalty Score</div></div>
+      <div class="stat-card"><div class="stat-icon">🏫</div><div class="stat-number" data-target="20" data-suffix="">0</div><div class="stat-label">Classrooms Optimized</div></div>
+      <div class="stat-card"><div class="stat-icon">🎂</div><div class="stat-number" data-target="47" data-suffix="">0</div><div class="stat-label">Mid-Year Enrollments</div></div>
+    </div>
+    <div class="stagger celebration-row mt-32" data-delay="600" style="align-items:flex-end;">
+      <img src="./scotty2.png" alt="Scotty" class="char-img large" style="margin-right:20px; object-fit:contain; border-bottom:none; filter:none; animation:none;">
+      <img src="./nate.jpg" alt="Nate" class="char-img" style="height:200px; animation-delay:0s">
+      <img src="./chris.jpg" alt="Chris" class="char-img" style="height:200px; animation-delay:0.3s">
+      <img src="./rahul.jpg" alt="Rahul" class="char-img" style="height:200px; animation-delay:0.6s">
+      <img src="./samuel.jpg" alt="Samuel" class="char-img" style="height:200px; animation-delay:0.9s">
+    </div>
+    <div class="stagger speech-bubble visible" data-delay="900" style="margin-top:20px;text-align:center;">"I'll never use a spreadsheet again."</div>
+    <div class="stagger final-title" data-delay="1100">ClassroomIQ</div>
+    <div class="stagger final-tagline" data-delay="1250">Goal Programming. Applied to what matters most.</div>
+    <div class="stagger credits" data-delay="1400" style="max-width:800px; margin: 32px auto 0;">
+      ClassroomIQ was designed and built by:<br>
+      <div style="display:flex; justify-content:center; gap:32px; margin: 24px 0;">
+        <img src="./nate.jpg" class="char-img" style="height:200px;">
+        <img src="./chris.jpg" class="char-img" style="height:200px;">
+        <img src="./rahul.jpg" class="char-img" style="height:200px;">
+        <img src="./samuel.jpg" class="char-img" style="height:200px;">
+      </div>
+      Nate Edenfield · Chris Oueis · Rahul Tejannavar · Samuel De La Paz<br>
+      Carnegie Mellon University — Heinz College · Management Science · Spring 2026<br>
+      Powered by GLPK.js · Goal Programming · Integer Linear Programming
+    </div>
+  </div>
+</div>
+
+</div><!-- /scenes-wrapper -->
+
+<script>
+(function() {
+  'use strict';
+
+  const SCENE_NAMES = [
+    'Welcome',          // scene-0
+    'The Crisis',       // scene-1
+    'Morning',          // scene-2
+    'Classroom Builder',// scene-3
+    'October Crisis',   // scene-4
+    'February Crisis',  // scene-5
+    'Finale'            // scene-6
+  ];
+  const TOTAL = 7;
+
+  let current = 0;
+  let transitioning = false;
+  let iframeLoaded = false;
+  let statsAnimated = false;
+  let tipTimer = null;
+  let consultantCycleId = null;
+  let paraCycleId = null;
+  let octCycleId = null;
+  let febCycleId = null;
+
+  // Preload iframe in background after 2 seconds
+  setTimeout(() => {
+    const iframe = document.getElementById('builderIframe');
+    if (iframe && !iframeLoaded) {
+      iframe.src = './index.html';
+      iframeLoaded = true;
+    }
+  }, 2000);
+
+  /* ── Progress Dots ── */
+  const bar = document.getElementById('progressBar');
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('button');
+    d.className = 'progress-dot' + (i === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Scene ' + i);
+    d.addEventListener('click', () => goTo(i));
+    bar.appendChild(d);
+  }
+  const labelEl = document.createElement('span');
+  labelEl.className = 'scene-label';
+  labelEl.textContent = SCENE_NAMES[0];
+  bar.appendChild(labelEl);
+
+  function updateDots() {
+    bar.querySelectorAll('.progress-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+    labelEl.textContent = SCENE_NAMES[current];
+  }
+
+  /* ── Scene Navigation ── */
+  function goTo(idx) {
+    if (idx < 0 || idx >= TOTAL || idx === current) return;
+    if (transitioning) return;
+    transitioning = true;
+
+    const oldScene = document.getElementById('scene-' + current);
+    const newScene = document.getElementById('scene-' + idx);
+    if (!oldScene || !newScene) { transitioning = false; return; }
+
+    // Fade out old
+    oldScene.style.transition = 'opacity 500ms ease';
+    oldScene.style.opacity = '0';
+    oldScene.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      oldScene.style.display = 'none';
+      oldScene.classList.remove('active');
+
+      // Show new scene
+      newScene.style.display = 'flex';
+      newScene.style.flexDirection = 'column';
+      newScene.style.opacity = '0';
+      newScene.style.pointerEvents = '';
+      newScene.style.transition = 'opacity 500ms ease';
+      newScene.classList.add('active');
+
+      // Force reflow then fade in
+      void newScene.offsetHeight;
+      newScene.style.opacity = '1';
+
+      current = idx;
+      updateDots();
+      onSceneEnter(idx);
+
+      // Always release the lock after 800ms maximum
+      setTimeout(() => { transitioning = false; }, 800);
+    }, 520);
+  }
+
+  // Emergency unlock — if stuck for more than 3 seconds, force release
+  setInterval(() => {
+    if (transitioning) transitioning = false;
+  }, 3000);
+
+  document.getElementById('navLeft').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('navRight').addEventListener('click', () => goTo(current + 1));
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && current < TOTAL - 1) goTo(current + 1);
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && current > 0) goTo(current - 1);
+  });
+
+  /* CTAs */
+  function onBtn(id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  }
+
+  onBtn('welcomeCta', () => goTo(1));
+  onBtn('ctaCrisis',  () => goTo(2));
+  onBtn('laptopCta',  () => goTo(3));
+  onBtn('cta2',       () => goTo(4));
+  onBtn('cta3',       () => goTo(5));
+  onBtn('cta4',       () => goTo(6));
+
+  /* ── Stagger Animations ── */
+  function animateStaggered(sceneEl) {
+    const items = sceneEl.querySelectorAll('.stagger');
+    items.forEach(el => { el.classList.remove('visible'); });
+    items.forEach(el => {
+      const delay = parseInt(el.dataset.delay || '0', 10);
+      setTimeout(() => el.classList.add('visible'), delay);
+    });
+  }
+
+  /* ── Particle Generators ── */
+  function createLightRays() {
+    const container = document.getElementById('lightRays');
+    if (container.children.length > 0) return;
+    const angles = [-25, -15, -8, 0, 8, 15, 25];
+    angles.forEach((angle, i) => {
+      const ray = document.createElement('div');
+      ray.className = 'light-ray';
+      ray.style.transform = 'rotate(' + angle + 'deg)';
+      ray.style.animationDelay = (i * 0.7) + 's';
+      ray.style.height = (50 + Math.random() * 30) + 'vh';
+      container.appendChild(ray);
+    });
+  }
+
+  function createLeaves() {
+    const container = document.getElementById('leaves');
+    if (container.children.length > 0) return;
+    const colors = ['#d97706', '#f97316', '#b45309', '#92400e', '#dc2626'];
+    for (let i = 0; i < 25; i++) {
+      const leaf = document.createElement('div');
+      leaf.className = 'leaf';
+      leaf.style.left = (Math.random() * 100) + '%';
+      leaf.style.background = colors[Math.floor(Math.random() * colors.length)];
+      leaf.style.width = (8 + Math.random() * 8) + 'px';
+      leaf.style.height = (5 + Math.random() * 5) + 'px';
+      leaf.style.transform = 'rotate(' + (Math.random() * 90) + 'deg)';
+      const dur = 6 + Math.random() * 8;
+      leaf.style.animation = 'fall-leaf ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(leaf);
+    }
+  }
+
+  function createSnow() {
+    const container = document.getElementById('snow');
+    if (container.children.length > 0) return;
+    for (let i = 0; i < 30; i++) {
+      const flake = document.createElement('div');
+      flake.className = 'snowflake';
+      const size = 2 + Math.random() * 2;
+      flake.style.width = size + 'px';
+      flake.style.height = size + 'px';
+      flake.style.left = (Math.random() * 100) + '%';
+      flake.style.opacity = 0.3 + Math.random() * 0.5;
+      const dur = 8 + Math.random() * 8;
+      flake.style.animation = 'fall-snow ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(flake);
+    }
+  }
+
+  function createConfetti() {
+    const container = document.getElementById('confetti');
+    if (container.children.length > 0) return;
+    const colors = ['#f97316', '#d97706', '#22c55e', '#3b82f6', '#ec4899', '#8b5cf6'];
+    for (let i = 0; i < 30; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const w = 4 + Math.random() * 6;
+      const h = Math.random() > 0.5 ? w : w * 3;
+      piece.style.width = w + 'px';
+      piece.style.height = h + 'px';
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = (Math.random() * 100) + '%';
+      const dur = 5 + Math.random() * 6;
+      piece.style.animation = 'fall-confetti ' + dur + 's linear ' + (Math.random() * dur) + 's infinite';
+      container.appendChild(piece);
+    }
+  }
+
+  /* ── Speech Bubble Cycling ── */
+  function cycleSpeech(elId, lines, interval) {
+    const el = document.getElementById(elId);
+    if (!el) return null;
+    let idx = 0;
+    function show() {
+      el.classList.remove('visible');
+      setTimeout(() => {
+        el.innerHTML = '<strong>' + lines[idx].name + ':</strong> "' + lines[idx].text + '"';
+        el.classList.add('visible');
+        idx = (idx + 1) % lines.length;
+      }, 300);
+    }
+    show();
+    return setInterval(show, interval || 2500);
+  }
+
+  /* ── Stat Counter ── */
+  function animateCounters() {
+    if (statsAnimated) return;
+    statsAnimated = true;
+    document.querySelectorAll('#statsGrid .stat-number').forEach(el => {
+      const target = parseInt(el.dataset.target, 10);
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const duration = 1500;
+      const start = performance.now();
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = prefix + Math.round(target * eased) + suffix;
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /* ── Scene Enter Handler ── */
+  function onSceneEnter(idx) {
+    if (idx !== 6) statsAnimated = false;
+    const scene = document.getElementById('scene-' + idx);
+    animateStaggered(scene);
+
+    // Clear previous timers
+    if (paraCycleId) { clearInterval(paraCycleId); paraCycleId = null; }
+    if (consultantCycleId) { clearInterval(consultantCycleId); consultantCycleId = null; }
+    if (octCycleId) { clearInterval(octCycleId); octCycleId = null; }
+    if (febCycleId) { clearInterval(febCycleId); febCycleId = null; }
+
+    if (idx === 1) {
+      createLightRays();
+      consultantCycleId = cycleSpeech('consultantGroupSpeech', [
+        { name: 'Nate', text: "We've seen this problem before." },
+        { name: 'Chris', text: "It's a multi-objective integer program." },
+        { name: 'Rahul', text: "Tractable. Give us the data." },
+        { name: 'Samuel', text: "We'll have a solution by morning." }
+      ], 2500);
+    }
+    if (idx === 2) {
+      // morning scene
+    }
+    if (idx === 3) {
+      // iframe already preloaded — nothing to do
+      const iframe = document.getElementById('builderIframe');
+      if (!iframeLoaded) {
+        iframe.src = './index.html';
+        iframeLoaded = true;
+      }
+    }
+    if (idx === 4) {
+      createLeaves();
+      octCycleId = cycleSpeech('octoberSpeech', [
+        { name: 'Samuel', text: 'Which room can take her?' },
+        { name: 'Nate',   text: 'Room 4 is already at cap...' },
+        { name: 'Chris',  text: 'Room 2 has space — bilingual coverage confirmed.' },
+        { name: 'Rahul',  text: 'The optimizer placed her optimally.' }
+      ], 2500);
+    }
+    if (idx === 5) {
+      createSnow();
+      setTimeout(() => {
+        const phone = document.getElementById('phoneFrame');
+        if (phone) phone.classList.add('buzzing');
+        setTimeout(() => phone && phone.classList.remove('buzzing'), 2000);
+      }, 400);
+      febCycleId = cycleSpeech('febSpeech', [
+        { name: 'Nate', text: 'I can manage the room temporarily...' },
+        { name: 'Samuel', text: 'We need a certified sub ASAP.' },
+        { name: 'Chris', text: 'Or we split the kids — last resort.' },
+        { name: 'Rahul', text: 'ClassroomIQ can model both options.' }
+      ], 2500);
+    }
+    if (idx === 6) {
+      createConfetti();
+      setTimeout(animateCounters, 600);
+    }
+  }
+
+  /* ── Option Card Selection ── */
+  window.selectOption = function(choice) {
+    const a = document.getElementById('optionA');
+    const b = document.getElementById('optionB');
+    const msg = document.getElementById('resolutionMsg');
+    if (choice === 'A') {
+      a.classList.add('selected');
+      b.classList.add('dimmed');
+    } else {
+      b.classList.add('selected');
+      a.classList.add('dimmed');
+    }
+    msg.style.display = 'block';
+    msg.style.animation = 'fadeUp 600ms cubic-bezier(0.16,1,0.32,1) forwards';
+  };
+
+  window.resetOptions = function() {
+    document.getElementById('optionA').classList.remove('selected', 'dimmed');
+    document.getElementById('optionB').classList.remove('selected', 'dimmed');
+    const msg = document.getElementById('resolutionMsg');
+    msg.style.display = 'none';
+    msg.style.animation = 'none';
+  };
+
+  /* ── Init Scene 0 ── */
+  onSceneEnter(0);
+
+})();
+</script>
+</body>
+</html>
